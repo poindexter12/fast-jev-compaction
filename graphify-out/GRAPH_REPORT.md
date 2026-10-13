@@ -1,42 +1,42 @@
 # Graph Report - fast-jev-compaction  (2026-10-13)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 30 files · ~75,798 words
+- Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 4 file(s) not represented in the graph (top: (none) 2, .toml 1, .plist 1)
 
 ## Summary
-- 753 nodes · 980 edges · 29 communities (17 shown, 12 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 3 edges (avg confidence: 0.85)
-- Token cost: 59,597 input · 400 output
+- 780 nodes · 1025 edges · 29 communities (17 shown, 12 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 26 edges (avg confidence: 0.93)
+- Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e3f262a7`
+- Built from commit: `dc495867`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Claude Code Type Definitions
-- Compaction Hook Entry Point
-- NPM Package Manifest
-- SwiftUI Demo App Shell
-- Public API Index Exports
-- Compaction Orchestration Pipeline
-- Core Domain Type Definitions
-- Tool Call State Fitting
-- Chunk Scoring Verdicts
+- claude-code.d.ts
+- fast-systemone.ts
+- package.json
+- main.swift
+- fast-systemone-compaction.test.ts
+- compact.ts
+- types.ts
+- state.ts
+- Chunk
 - Library TypeScript Config
 - Hook TypeScript Config
-- Jev Request Client
-- Demo Animation Phases
-- Message Compaction Client API
-- Scroll Position Tracking
-- Demo Message Script
+- fast-systemone-compaction
+- Demo
+- messages.ts
+- ChunkView
+- demo.ts
 - URL Query Parameters
-- Chunk Display View
-- Processing Phase States
-- Message Role Labels
+- Phase
+- build.sh
 - Abort Signal Handling
 - URL Serialization
-- Build Script
 - Abort Controller
 - Engine Interfaces
 - Text Decoding
@@ -47,67 +47,67 @@
 ## God Nodes (most connected - your core abstractions)
 1. `Demo` - 20 edges
 2. `Chunk` - 16 edges
-3. `compact()` - 15 edges
-4. `ChunkView` - 14 edges
-5. `fitState()` - 13 edges
+3. `compact()` - 16 edges
+4. `fitState()` - 15 edges
+5. `ChunkView` - 14 edges
 6. `compilerOptions` - 12 edges
 7. `compilerOptions` - 12 edges
 8. `TerminalView` - 11 edges
-9. `URLSearchParams` - 9 edges
-10. `Phase` - 9 edges
+9. `Message` - 10 edges
+10. `SystemOneAsker` - 10 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `compactSession()` --calls--> `compact()`  [EXTRACTED]
-  hooks/fast-jev.ts → src/compact.ts
-- `register()` --calls--> `reductionRatio()`  [EXTRACTED]
-  hooks/fast-jev.ts → src/compact.ts
-- `summarize()` --calls--> `reductionRatio()`  [EXTRACTED]
-  hooks/fast-jev.ts → src/compact.ts
-- `jevAsker()` --calls--> `buildJevRequest()`  [EXTRACTED]
-  hooks/fast-jev.ts → src/request.ts
-- `jevAsker()` --calls--> `parseJevResponse()`  [EXTRACTED]
-  hooks/fast-jev.ts → src/request.ts
+- `Install and usage` --references--> `buildSystemOneRequest()`  [INFERRED]
+  README.md → src/request.ts
+- `Install and usage` --references--> `parseSystemOneResponse()`  [INFERRED]
+  README.md → src/request.ts
+- `Install and usage` --references--> `fitState()`  [INFERRED]
+  README.md → src/state.ts
+- `Install and usage` --references--> `Message`  [INFERRED]
+  README.md → src/types.ts
+- `Install and usage` --references--> `SystemOneAsker`  [INFERRED]
+  README.md → src/types.ts
 
 ## Import Cycles
 - None detected.
 
 ## Communities (29 total, 12 thin omitted)
 
-### Community 0 - "Claude Code Type Definitions"
+### Community 0 - "claude-code.d.ts"
 Cohesion: 0.00
-Nodes (444): AgentCallRecord, AgentInfo, AgentLoop, AgentOfferInput, AgentOfferResult, AgentSpawnArgs, AgentSpawnInput, AgentSpawnResult (+436 more)
+Nodes (443): AgentCallRecord, AgentInfo, AgentLoop, AgentOfferInput, AgentOfferResult, AgentSpawnArgs, AgentSpawnInput, AgentSpawnResult (+435 more)
 
-### Community 1 - "Compaction Hook Entry Point"
-Cohesion: 0.10
-Nodes (28): compactSession(), decisionLog(), decisionLogLines(), getApiKey(), HOOK_DEFAULTS, HookConfig, HookFetch, HookFetchInit (+20 more)
+### Community 1 - "fast-systemone.ts"
+Cohesion: 0.09
+Nodes (31): compactSession(), decisionLog(), decisionLogLines(), getApiKey(), HOOK_DEFAULTS, HookConfig, HookFetch, HookFetchInit (+23 more)
 
-### Community 2 - "NPM Package Manifest"
-Cohesion: 0.08
-Nodes (25): description, devDependencies, tsx, @types/node, typescript, vitest, engines, node (+17 more)
+### Community 2 - "package.json"
+Cohesion: 0.07
+Nodes (27): description, devDependencies, tsx, @types/node, typescript, vitest, engines, node (+19 more)
 
-### Community 3 - "SwiftUI Demo App Shell"
+### Community 3 - "main.swift"
 Cohesion: 0.13
-Nodes (17): AppKit, ContextMeter, .body, .color, JevDemoApp, .body, Palette, RootView (+9 more)
+Nodes (17): AppKit, ContextMeter, .body, .color, Palette, RootView, Spinner, .body (+9 more)
 
-### Community 4 - "Public API Index Exports"
+### Community 4 - "fast-systemone-compaction.test.ts"
 Cohesion: 0.11
 Nodes (8): call(), fileA, fileB, fit, message(), result(), Seen, transcript()
 
-### Community 5 - "Compaction Orchestration Pipeline"
-Cohesion: 0.21
-Nodes (16): applyDecisions(), askBatch(), batchCalls(), compact(), count(), decideCall(), DEFAULT_OPTIONS, finite() (+8 more)
+### Community 5 - "compact.ts"
+Cohesion: 0.16
+Nodes (21): Install and usage, applyDecisions(), askBatch(), batchCalls(), compact(), count(), decideCall(), DEFAULT_OPTIONS (+13 more)
 
-### Community 6 - "Core Domain Type Definitions"
-Cohesion: 0.12
-Nodes (16): CallAction, CallAnswer, CallDecision, ChoiceAnswer, ChoiceQuestion, FittedState, HistoryEntry, HistoryToolCall (+8 more)
+### Community 6 - "types.ts"
+Cohesion: 0.15
+Nodes (18): systemOneAsker(), buildSystemOneRequest(), parseSystemOneResponse(), SystemOneRequest, CallAction, ChoiceAnswer, ChoiceQuestion, HistoryToolCall (+10 more)
 
-### Community 7 - "Tool Call State Fitting"
-Cohesion: 0.27
-Nodes (15): abridge(), callsByMessage(), collectToolCalls(), compactCall(), estimateTokens(), fitState(), goalFromMessages(), historyEntries() (+7 more)
+### Community 7 - "state.ts"
+Cohesion: 0.23
+Nodes (15): abridge(), callsByMessage(), compactCall(), estimateTokens(), fitState(), goalFromMessages(), historyEntries(), INPUT_CHARS (+7 more)
 
-### Community 8 - "Chunk Scoring Verdicts"
-Cohesion: 0.22
-Nodes (11): CallScore, Chunk, .badgeLabel, .isText, .verdict, text(), tool(), Verdict (+3 more)
+### Community 8 - "Chunk"
+Cohesion: 0.14
+Nodes (16): CallScore, Chunk, .badgeLabel, .isText, .verdict, Role, assistant, toolHeader (+8 more)
 
 ### Community 9 - "Library TypeScript Config"
 Cohesion: 0.13
@@ -117,49 +117,49 @@ Nodes (14): compilerOptions, declaration, declarationMap, module, moduleResoluti
 Cohesion: 0.13
 Nodes (14): compilerOptions, baseUrl, lib, module, moduleResolution, noEmit, noUncheckedIndexedAccess, paths (+6 more)
 
-### Community 11 - "Jev Request Client"
-Cohesion: 0.29
-Nodes (9): jevAsker(), buildJevRequest(), DEFAULT_MODEL, JevRequest, parseJevResponse(), SYSTEM_ONE_URL, JevQuestions, JevResponse (+1 more)
+### Community 11 - "fast-systemone-compaction"
+Cohesion: 0.15
+Nodes (11): Configuration, fast-systemone-compaction Claude Code mod, Scope and caveat, Animated demo (macOS), Claude Code plugin, Development, fast-systemone-compaction, How it works (+3 more)
 
-### Community 13 - "Message Compaction Client API"
-Cohesion: 0.22
-Nodes (7): JevClient, JevClientOptions, compactMessages(), CompactMessagesOptions, CompactOptions, CompactResult, JevAsker
+### Community 12 - "Demo"
+Cohesion: 0.16
+Nodes (5): Demo, FrameKey, .body, ScrollRequest, .body
 
-### Community 14 - "Scroll Position Tracking"
-Cohesion: 0.33
-Nodes (3): FrameKey, ScrollRequest, .body
+### Community 13 - "messages.ts"
+Cohesion: 0.28
+Nodes (7): Options, SystemOneClient, SystemOneClientOptions, compactMessages(), CompactMessagesOptions, CompactOptions, CompactResult
 
-### Community 17 - "Chunk Display View"
+### Community 14 - "ChunkView"
 Cohesion: 0.29
 Nodes (7): ChunkView, .badge, .body, .content, .shownText, .tint, .toolTitle
 
-### Community 18 - "Processing Phase States"
+### Community 15 - "demo.ts"
+Cohesion: 0.15
+Nodes (4): messages, Message, SystemOneAsker, PluginOptions
+
+### Community 17 - "Phase"
 Cohesion: 0.29
 Nodes (7): Phase, collapsing, done, idle, scanning, typing, waiting
 
-### Community 19 - "Message Role Labels"
-Cohesion: 0.40
-Nodes (5): Role, assistant, toolHeader, toolLine, user
-
 ## Knowledge Gaps
-- **33 isolated node(s):** `.badge`, `.body`, `.content`, `.shownText`, `.tint` (+28 more)
-  These have ≤1 connection - possible missing edges. (Counts symbols only; 601 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **33 isolated node(s):** `AppKit`, `SwiftUI`, `user`, `assistant`, `toolHeader` (+28 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 616 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `NPM Package Manifest` to `Compaction Hook Entry Point`, `Public API Index Exports`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
-- **What connects `.badge`, `.body`, `.content` to the rest of the system?**
+- **Why does `vitest` connect `package.json` to `fast-systemone.ts`, `fast-systemone-compaction.test.ts`?**
+  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+- **Are the 3 inferred relationships involving `fitState()` (e.g. with `surgical-scope.md` and `Install and usage`) actually correct?**
+  _`fitState()` has 3 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `AppKit`, `SwiftUI`, `user` to the rest of the system?**
   _33 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Claude Code Type Definitions` be split into smaller, more focused modules?**
-  _Cohesion score 0.004415011037527594 - nodes in this community are weakly interconnected._
-- **Why does `compact()` connect `Compaction Orchestration Pipeline` to `Compaction Hook Entry Point`, `Public API Index Exports`, `Message Compaction Client API`, `Tool Call State Fitting`?**
-  _High betweenness centrality (0.018) - this node is a cross-community bridge._
-- **Should `Compaction Hook Entry Point` be split into smaller, more focused modules?**
-  _Cohesion score 0.10252100840336134 - nodes in this community are weakly interconnected._
-- **Why does `URLSearchParams` connect `URL Query Parameters` to `Claude Code Type Definitions`?**
-  _High betweenness centrality (0.018) - this node is a cross-community bridge._
-- **Should `NPM Package Manifest` be split into smaller, more focused modules?**
-  _Cohesion score 0.07692307692307693 - nodes in this community are weakly interconnected._
+- **Should `claude-code.d.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.004424778761061947 - nodes in this community are weakly interconnected._
+- **Why does `PluginOptions` connect `demo.ts` to `claude-code.d.ts`?**
+  _High betweenness centrality (0.041) - this node is a cross-community bridge._
+- **Should `fast-systemone.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.08771929824561403 - nodes in this community are weakly interconnected._
+- **Why does `Message` connect `demo.ts` to `fast-systemone.ts`, `fast-systemone-compaction.test.ts`, `compact.ts`, `types.ts`, `state.ts`, `messages.ts`?**
+  _High betweenness centrality (0.033) - this node is a cross-community bridge._
