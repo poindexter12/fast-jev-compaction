@@ -1,25 +1,25 @@
-import type { JevAnswer, JevQuestions, JevResponse, JevState } from './types.js';
+import type { SystemOneAnswer, SystemOneQuestions, SystemOneResponse, SystemOneState } from './types.js';
 
 export const SYSTEM_ONE_URL = 'https://api.typesafe.ai/v1/systemone';
 export const DEFAULT_MODEL = 'jev-latest';
 
-export interface JevRequest {
+export interface SystemOneRequest {
   url: string;
   method: 'POST';
   headers: Record<string, string>;
   body: string;
 }
 
-/** The HTTP request for one Jev call, for any fetch-like transport. */
-export function buildJevRequest(
+/** The HTTP request for one System One call, for any fetch-like transport. */
+export function buildSystemOneRequest(
   params: {
     apiKey: string;
     model?: string;
     baseUrl?: string;
   },
-  state: JevState,
-  questions: JevQuestions,
-): JevRequest {
+  state: SystemOneState,
+  questions: SystemOneQuestions,
+): SystemOneRequest {
   return {
     url: params.baseUrl ?? SYSTEM_ONE_URL,
     method: 'POST',
@@ -35,20 +35,20 @@ export function buildJevRequest(
   };
 }
 
-/** Validates a Jev response body; throws on anything but an `answers` object. */
-export function parseJevResponse(
+/** Validates a System One response body; throws on anything but an `answers` object. */
+export function parseSystemOneResponse(
   status: number,
   ok: boolean,
   text: string,
-): JevResponse {
+): SystemOneResponse {
   if (!ok) {
-    throw new Error(`Jev request failed (${status}): ${text.slice(0, 200)}`);
+    throw new Error(`System One request failed (${status}): ${text.slice(0, 200)}`);
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error('Jev returned malformed JSON');
+    throw new Error('System One returned malformed JSON');
   }
   if (
     parsed === null ||
@@ -57,14 +57,14 @@ export function parseJevResponse(
     parsed.answers === null ||
     typeof parsed.answers !== 'object'
   ) {
-    throw new Error('Jev response is missing answers');
+    throw new Error('System One response is missing answers');
   }
-  return parsed as JevResponse;
+  return parsed as SystemOneResponse;
 }
 
 /** The `noul` probability of one answer; throws when it is not there. */
 export function noulAnswer(
-  answers: Record<string, JevAnswer>,
+  answers: Record<string, SystemOneAnswer>,
   name: string,
 ): number {
   const answer = answers[name];
@@ -74,7 +74,7 @@ export function noulAnswer(
     typeof answer.noul !== 'number' ||
     !Number.isFinite(answer.noul)
   ) {
-    throw new Error(`Invalid Jev answer for ${name}`);
+    throw new Error(`Invalid System One answer for ${name}`);
   }
   return answer.noul;
 }

@@ -8,7 +8,7 @@ priority: 95
 - One hat per commit: a commit either adds behavior and ships with its test, or it preserves
   behavior and restructures. Never both.
 - Stage per path or per hunk. Do not blind-add the whole tree; `package-lock.json` and
-  `demo/JevDemo/build` noise should never ride along with a source change.
+  `demo/SystemOneDemo/build` noise should never ride along with a source change.
 - Commit at each finished, green step, where green means the three gates in the verification rule.
 - Commit only when asked, and push only when asked. `main` tracks `origin`, so branch before
   working on it. Never amend a published commit and never skip hooks.

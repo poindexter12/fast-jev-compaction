@@ -2,21 +2,21 @@ import { describe, expect, it } from 'vitest';
 import {
   applyDecisions,
   batchCalls,
-  buildJevRequest,
+  buildSystemOneRequest,
   collectToolCalls,
   compact,
   compactMessages,
   decideCall,
   estimateTokens,
   fitState,
-  JevClient,
-  parseJevResponse,
+  SystemOneClient,
+  parseSystemOneResponse,
   questionsFor,
   reductionRatio,
   resolveOptions,
   type HistoryToolCall,
-  type JevAsker,
-  type JevQuestions,
+  type SystemOneAsker,
+  type SystemOneQuestions,
   type Message,
   type ToolCall,
 } from '../src/index.js';
@@ -53,9 +53,9 @@ function transcript(): Message[] {
 
 type Seen = { state: unknown; questions: string[] };
 
-function fakeJev(answer: (name: string) => number, seen: Seen[] = []): JevAsker {
+function fakeSystemOne(answer: (name: string) => number, seen: Seen[] = []): SystemOneAsker {
   return {
-    async ask(state, questions: JevQuestions) {
+    async ask(state, questions: SystemOneQuestions) {
       seen.push({ state, questions: Object.keys(questions) });
       return {
         answers: Object.fromEntries(
@@ -359,10 +359,10 @@ describe('decisions', () => {
     expect(kept[0]).toBe(messages[0]);
     expect(kept[2]).not.toBe(messages[4]);
     expect(kept[2]?.toolUses[0]?.text).toMatch(
-      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-jev-compaction truncated 1700 chars`),
+      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-systemone-compaction truncated 1700 chars`),
     );
     expect(kept[3]?.toolResults?.[0]?.text).toMatch(
-      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-jev-compaction truncated 1700 chars`),
+      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-systemone-compaction truncated 1700 chars`),
     );
     expect(kept[2]).not.toBe(messages[4]);
     expect(kept[3]).not.toBe(messages[5]);
@@ -386,13 +386,13 @@ describe('decisions', () => {
 
     const kept = applyDecisions(messages, decisions, calls, 50);
     expect(kept[2]?.toolResults?.[0]?.text).toBe(
-      `${original.slice(0, 50)}\n[fast-jev-compaction truncated ${total - 50} chars of this tool result; re-run the tool if needed]`,
+      `${original.slice(0, 50)}\n[fast-systemone-compaction truncated ${total - 50} chars of this tool result; re-run the tool if needed]`,
     );
     expect(kept[1]?.toolUses[0]?.text).toBe(kept[2]?.toolResults?.[0]?.text);
 
     const noHead = applyDecisions(messages, decisions, calls, 0);
     expect(noHead[2]?.toolResults?.[0]?.text).toBe(
-      `[fast-jev-compaction truncated ${total} chars of this tool result; re-run the tool if needed]`,
+      `[fast-systemone-compaction truncated ${total} chars of this tool result; re-run the tool if needed]`,
     );
   });
 });
@@ -408,7 +408,7 @@ describe('compact', () => {
     }).tokens;
     const output = await compact(
       messages,
-      fakeJev((name) => (name.startsWith('call_') ? 0.9 : 0.1), seen),
+      fakeSystemOne((name) => (name.startsWith('call_') ? 0.9 : 0.1), seen),
       { preserveRecentMessages: 1, maxRequestTokens: stateTokens + 150 },
     );
 
@@ -429,34 +429,34 @@ describe('compact', () => {
     expect(reductionRatio(output)).toBeGreaterThan(0);
   });
 
-  it('keeps everything without calling Jev when no tool call is a candidate', async () => {
+  it('keeps everything without calling System One when no tool call is a candidate', async () => {
     const seen: Seen[] = [];
     const messages = [message('user', 'hello'), message('assistant', 'hi')];
-    const output = await compact(messages, fakeJev(() => 0, seen));
+    const output = await compact(messages, fakeSystemOne(() => 0, seen));
     expect(seen).toHaveLength(0);
     expect(output.stats).toMatchObject({ requests: 0, stateStage: '', calls: 0 });
     expect(output.messages).toEqual(messages);
   });
 
-  it('reports a tiny reduction when Jev wants everything kept', async () => {
-    const output = await compact(transcript(), fakeJev(() => 0.95), { preserveRecentMessages: 1 });
+  it('reports a tiny reduction when System One wants everything kept', async () => {
+    const output = await compact(transcript(), fakeSystemOne(() => 0.95), { preserveRecentMessages: 1 });
     expect(output.decisions.every((d) => d.action === 'keep')).toBe(true);
     expect(reductionRatio(output)).toBe(0);
   });
 
   it('rejects malformed answers', async () => {
-    const broken: JevAsker = {
+    const broken: SystemOneAsker = {
       ask: async () => ({ answers: { call_t1: { noul: 0.5 } } }),
     };
     await expect(compact(transcript(), broken, { preserveRecentMessages: 1 })).rejects.toThrow(
-      /Invalid Jev answer/,
+      /Invalid System One answer/,
     );
   });
 });
 
 describe('HTTP client', () => {
   it('builds a System One request', () => {
-    const request = buildJevRequest({ apiKey: 'k' }, { a: 1 }, {
+    const request = buildSystemOneRequest({ apiKey: 'k' }, { a: 1 }, {
       q: { type: 'noul', instructions: 'x' },
     });
     expect(request.url).toBe('https://api.typesafe.ai/v1/systemone');
@@ -469,15 +469,15 @@ describe('HTTP client', () => {
   });
 
   it('rejects failed and malformed responses', () => {
-    expect(() => parseJevResponse(500, false, 'boom')).toThrow(/500/);
-    expect(() => parseJevResponse(200, true, 'not json')).toThrow(/malformed/);
-    expect(() => parseJevResponse(200, true, '{}')).toThrow(/missing answers/);
-    expect(parseJevResponse(200, true, '{"answers":{}}')).toEqual({ answers: {} });
+    expect(() => parseSystemOneResponse(500, false, 'boom')).toThrow(/500/);
+    expect(() => parseSystemOneResponse(200, true, 'not json')).toThrow(/malformed/);
+    expect(() => parseSystemOneResponse(200, true, '{}')).toThrow(/missing answers/);
+    expect(parseSystemOneResponse(200, true, '{"answers":{}}')).toEqual({ answers: {} });
   });
 
   it('asks over fetch and refuses to run without a key', async () => {
     const bodies: string[] = [];
-    const client = new JevClient({
+    const client = new SystemOneClient({
       apiKey: 'k',
       model: 'jev-test',
       fetch: (async (_url: string | URL | Request, init?: RequestInit) => {
@@ -489,7 +489,7 @@ describe('HTTP client', () => {
     expect(response.answers.q).toEqual({ noul: 0.4 });
     expect(JSON.parse(bodies[0]!).model).toBe('jev-test');
 
-    const keyless = new JevClient({ apiKey: '' });
+    const keyless = new SystemOneClient({ apiKey: '' });
     await expect(keyless.ask('s', {})).rejects.toThrow(/TYPESAFE_API_KEY/);
     await expect(
       compactMessages(transcript(), { apiKey: '', preserveRecentMessages: 1 }),

@@ -1,14 +1,14 @@
 {
-  "name": "fast-jev-compaction",
+  "name": "fast-systemone-compaction",
   "owner": {
-    "name": "tamaratran",
-    "url": "https://github.com/tamaratran"
+    "name": "poindexter12",
+    "url": "https://github.com/poindexter12"
   },
   "plugins": [
     {
-      "name": "fast-jev-compaction",
+      "name": "fast-systemone-compaction",
       "source": "./",
-      "description": "Verbatim Jev-guided compaction for Claude Code sessions.",
+      "description": "Verbatim compaction for Claude Code sessions, guided by System One.",
       "version": "0.3.0",
       "license": "MIT"
     }

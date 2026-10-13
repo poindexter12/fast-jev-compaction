@@ -185,7 +185,7 @@ export function goalFromMessages(messages: readonly Message[]): string {
 }
 
 /**
- * Builds the Jev state from the whole conversation and shrinks it in stages
+ * Builds the System One state from the whole conversation and shrinks it in stages
  * until it fits both `maxStateTokens` and `maxStateChars`: tool inputs are
  * truncated, then long texts
  * are abridged oldest-first (pinned messages last), then old messages collapse
@@ -327,7 +327,7 @@ export function fitState(
 
   throw new Error(
     chars > options.maxStateChars
-      ? `history too large for Jev (~${chars} chars after truncation, limit ${options.maxStateChars})`
-      : `history too large for Jev (~${tokens} tokens after truncation, limit ${options.maxStateTokens})`,
+      ? `history too large for System One (~${chars} chars after truncation, limit ${options.maxStateChars})`
+      : `history too large for System One (~${tokens} tokens after truncation, limit ${options.maxStateTokens})`,
   );
 }

@@ -6,7 +6,7 @@ priority: 40
   you had to re-derive from `src/` or the README, and conventions that needed clarifying. These are
   leads worth raising, not permission to build or edit anything.
 - Before proposing a new capability, look at what is already here: the npm scripts in
-  `package.json`, the exported building blocks in `src/`, the fake-Jev harness in `tests/`, the
+  `package.json`, the exported building blocks in `src/`, the fake System One harness in `tests/`, the
   graph under `graphify-out/`, the codebase map in `.claude/.codebase-info/`, and the installed
   plugins and skills. Reuse what works and improve an existing piece when the evidence shows a
   gap. A missing check does not have to become a new tool.

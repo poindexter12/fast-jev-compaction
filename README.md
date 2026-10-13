@@ -1,6 +1,6 @@
-# fast-jev-compaction
+# fast-systemone-compaction
 
-Claude Code plugin that replaces the compaction summary with Jev decisions:
+Claude Code plugin that replaces the compaction summary with System One decisions:
 every tool call and result is scored in one fast request, stale ones are
 dropped or truncated, everything kept stays verbatim. Also usable as an npm
 library.
@@ -10,7 +10,7 @@ library.
 Most context compaction asks an LLM to summarize old turns. A summary is
 lossy: a file path, exact error, constraint, or command can disappear even when
 it matters later. This library never rewrites anything. It only deletes tool
-calls and tool results Jev says are no longer needed, and it asks Jev while
+calls and tool results System One says are no longer needed, and it asks System One while
 showing it the whole conversation. User and assistant text stays verbatim and
 in order.
 
@@ -23,7 +23,7 @@ built-in compaction summary with the original messages.
 1. Every `tool_use` is paired with its `tool_result` by `tool_use_id`. Calls in
    the first message or in the newest `preserveRecentMessages` messages are
    pinned and never touched.
-2. The **state** sent to Jev is the whole conversation so far, oldest first,
+2. The **state** sent to System One is the whole conversation so far, oldest first,
    with every tool result replaced by a short note (`ok, 4213 chars (omitted)`).
    Tool inputs are included, texts are included, nothing is summarized.
 3. The state is fitted into `maxStateTokens` (25k by default) in stages, each
@@ -36,7 +36,7 @@ built-in compaction summary with the original messages.
    does not fit, compaction throws. Tokens are estimated without a tokenizer (a
    word per six letters, half a token per digit, ~one per other symbol),
    calibrated to land a little above the counts Jev reports.
-4. For every non-pinned call Jev gets two `noul` questions: should the **call**
+4. For every non-pinned call System One gets two `noul` questions: should the **call**
    stay (knowing it was made, with its input, still matters), and should the
    **result** stay verbatim (its contents are still needed and re-running the
    tool would not do).
@@ -53,18 +53,18 @@ built-in compaction summary with the original messages.
    removed, untouched messages are returned as the same objects, and no result
    is ever left without its call.
 
-Jev failures, malformed answers, a missing key, or a history that cannot be
+System One failures, malformed answers, a missing key, or a history that cannot be
 fitted throw; the caller (or the Claude Code hook) decides what to fall back to.
 
 ## Install and usage
 
 ```sh
-npm install fast-jev-compaction
+npm install fast-systemone-compaction
 export TYPESAFE_API_KEY=...
 ```
 
 ```ts
-import { compactMessages, reductionRatio, type Message } from 'fast-jev-compaction';
+import { compactMessages, reductionRatio, type Message } from 'fast-systemone-compaction';
 
 const transcript: Message[] = [
   { role: 'user', text: 'Fix the failing test. Never edit src/generated.', toolUses: [] },
@@ -87,9 +87,9 @@ if (reductionRatio(result) < 0.25) {
 `Message` is a subset of Claude Code's `SessionMessage`, so a session transcript
 can be passed in as is.
 
-To bring your own transport, implement `JevAsker` (one `ask(state, questions)`
-method) and call `compact(messages, asker, options)`; `buildJevRequest` and
-`parseJevResponse` give you the HTTP request body and response validation.
+To bring your own transport, implement `SystemOneAsker` (one `ask(state, questions)`
+method) and call `compact(messages, asker, options)`; `buildSystemOneRequest` and
+`parseSystemOneResponse` give you the HTTP request body and response validation.
 The building blocks (`collectToolCalls`, `fitState`, `batchCalls`,
 `decideCall`, `applyDecisions`) are exported too.
 
@@ -100,8 +100,8 @@ put it in a source file.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `apiKey` | `TYPESAFE_API_KEY` | TypeSafe API key (`compactMessages`/`JevClient`) |
-| `model` | `jev-latest` | Jev model name |
+| `apiKey` | `TYPESAFE_API_KEY` | TypeSafe API key (`compactMessages`/`SystemOneClient`) |
+| `model` | `jev-latest` | Model name sent with every System One request |
 | `baseUrl` | `https://api.typesafe.ai/v1/systemone` | System One endpoint |
 | `fetch` | native `fetch` | Injectable fetch implementation for tests |
 | `goal` | last 3 user prompts | Ongoing task description included in the state |
@@ -118,7 +118,7 @@ stage was needed, and the number of requests.
 ## Limitations
 
 - Only tool calls and results are candidates; text messages are never removed
-  or shortened in the output (they are only abridged in the state Jev sees).
+  or shortened in the output (they are only abridged in the state System One sees).
 - Token sizes are estimates from character counts, not a tokenizer.
 - Calibration is at the request level; a probability is not a proof that a
   result is safe to delete. The assistant can always re-run the tool.
@@ -127,7 +127,7 @@ stage was needed, and the number of requests.
 
 ## Claude Code plugin
 
-The repository root is a Claude Code function-hook plugin: `hooks/fast-jev.ts`
+The repository root is a Claude Code function-hook plugin: `hooks/fast-systemone.ts`
 is a thin adapter that feeds `session.compact` transcripts through `src/` and
 falls back to Claude Code's built-in summary on errors or insufficient
 reduction. See [`hooks/README.md`](hooks/README.md) for configuration and the
@@ -146,16 +146,16 @@ Then add this repository as a plugin marketplace and install the plugin,
 either from the shell or as slash commands inside a session:
 
 ```sh
-claude plugin marketplace add tamaratran/fast-jev-compaction
-claude plugin install fast-jev-compaction@fast-jev-compaction
+claude plugin marketplace add poindexter12/fast-systemone-compaction
+claude plugin install fast-systemone-compaction@fast-systemone-compaction
 ```
 
 The install prompts for the plugin options (API key, thresholds, `truncateHeadChars`,
 …); leave them at their defaults to use `TYPESAFE_API_KEY` from the environment.
 Restart Claude Code or run `/reload-plugins`. From then on `/compact` (and
-auto-compaction) goes through Jev: the toast reads
-`fast-jev-compaction: kept N/M messages, no summary (…)` when the pruned history
-replaced the built-in summary, or `fallback to built-in summary (…)` when Jev
+auto-compaction) goes through System One: the toast reads
+`fast-systemone-compaction: kept N/M messages, no summary (…)` when the pruned history
+replaced the built-in summary, or `fallback to built-in summary (…)` when System One
 could not remove enough (short sessions, or when it fails).
 
 To run from a checkout without installing: `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude --plugin-dir .`
@@ -173,19 +173,19 @@ npm run validate:plugin  # claude plugin validate
 TYPESAFE_API_KEY="$(cat ~/.typesafe_key)" npm run demo
 ```
 
-The unit tests use a fake Jev and never contact TypeSafe. The demo is the live
+The unit tests use a fake System One and never contact TypeSafe. The demo is the live
 network check.
 
 ## Animated demo (macOS)
 
-`demo/JevDemo` is a small native SwiftUI app that plays a scripted, dramatized
+`demo/SystemOneDemo` is a small native SwiftUI app that plays a scripted, dramatized
 version of the compaction flow inside a Claude Code-style terminal: the tool
-calls of a canned transcript are scored, results and calls Jev lets go turn red
+calls of a canned transcript are scored, results and calls System One lets go turn red
 and collapse away, and the rest stays verbatim. It never calls the API; it
 exists to be screen recorded.
 
 ```sh
-demo/JevDemo/build.sh   # builds demo/JevDemo/build/JevDemo.app and launches it
+demo/SystemOneDemo/build.sh   # builds demo/SystemOneDemo/build/SystemOneDemo.app and launches it
 ```
 
 Press space in the app to replay from the start.

@@ -1,0 +1,50 @@
+name: CI
+
+# Runs the gates that work without a Claude Code install. `npm run
+# validate:plugin` is deliberately absent: it shells out to the `claude` CLI,
+# which no runner has, so the plugin manifest stays a local gate. Run it by
+# hand after touching `.claude-plugin/plugin.json`, especially `userConfig`.
+#
+# No secrets are needed or available here. Both suites drive a fake System One
+# and must never reach TypeSafe; a test that wants TYPESAFE_API_KEY is a defect
+# in the test, not a missing CI secret.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The two lines this fork supports: 24 is the floor package.json engines
+        # declares, 26 is what local development and .mise.toml run on. 18 and
+        # 22 were dropped deliberately; nothing here needs them.
+        node: ['24', '26']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      # Covers both halves: tsc for src/, then tsconfig.hooks.json for hooks/.
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
