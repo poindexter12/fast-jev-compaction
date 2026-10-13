@@ -1,0 +1,30 @@
+# Prereqs for this repo. `mise trust && mise install` once per machine, then
+# the npm scripts in package.json resolve against the pinned Node.
+#
+# Trust cannot be granted from here -- a project config that self-trusted would
+# defeat the point -- so `mise trust` is a one-off by hand.
+
+[tools]
+# Pinned to the line local development runs on. CI covers the other supported
+# line (24) in .github/workflows/ci.yml, and package.json engines declares
+# >=24, so 24 is the floor and anything older is unsupported.
+node = "26"
+
+[settings]
+# Install a missing toolchain on entering the directory rather than failing a
+# gate halfway through.
+auto_install = true
+
+# Deliberately NOT managed here:
+#
+# - The `claude` CLI, which `npm run validate:plugin` shells out to. It does
+#   have a mise backend (aqua:anthropics/claude-code) but it is pinned in the
+#   global config as a machine-level tool, not a dependency of this project.
+# - Xcode's Swift toolchain, which demo/SystemOneDemo/build.sh needs. Bare
+#   swiftc cannot resolve SwiftUI's macro plugins, so the demo wants a real
+#   Xcode rather than a pinned compiler.
+# - TYPESAFE_API_KEY, which only `npm run demo` reads. It comes from the
+#   environment or the plugin's apiKey option and is never written to a file in
+#   this repo. If a local secrets file is ever wanted, the house pattern is
+#   `_.file = { path = ".secrets.toml", redact = true }` with the file
+#   gitignored, as in ../bike-guard.
