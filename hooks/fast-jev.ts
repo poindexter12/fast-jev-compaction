@@ -9,11 +9,11 @@ import type {
 } from 'claude-code';
 
 import { compact, reductionRatio, resolveOptions } from '../src/compact.js';
-import { buildJevRequest, DEFAULT_MODEL, parseJevResponse } from '../src/request.js';
+import { buildSystemOneRequest, DEFAULT_MODEL, parseSystemOneResponse } from '../src/request.js';
 import type {
   CompactOptions,
   CompactResult,
-  JevAsker,
+  SystemOneAsker,
   Message,
   ToolResult,
   ToolUse,
@@ -92,24 +92,24 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
 }
 
 /**
- * A `JevAsker` over the engine's `$.http.fetch`. `baseUrl` overrides the
+ * A `SystemOneAsker` over the engine's `$.http.fetch`. `baseUrl` overrides the
  * System One endpoint; unset keeps TypeSafe's.
  */
-export function jevAsker(
+export function systemOneAsker(
   fetchFn: HookFetch,
   apiKey: string,
   model: string,
   baseUrl?: string,
-): JevAsker {
+): SystemOneAsker {
   return {
     async ask(state, questions) {
-      const request = buildJevRequest({ apiKey, model, baseUrl }, state, questions);
+      const request = buildSystemOneRequest({ apiKey, model, baseUrl }, state, questions);
       const response = await fetchFn(request.url, {
         method: request.method,
         headers: request.headers,
         body: request.body,
       });
-      return parseJevResponse(response.status, response.ok, response.text);
+      return parseSystemOneResponse(response.status, response.ok, response.text);
     },
   };
 }
@@ -173,7 +173,7 @@ export type SessionCompaction = {
   messages: SessionMessage[];
 };
 
-/** Runs the library over a session transcript; throws when the key is missing or Jev fails. */
+/** Runs the library over a session transcript; throws when the key is missing or System One fails. */
 export async function compactSession(
   messages: readonly SessionMessage[],
   config: HookConfig,
@@ -182,7 +182,7 @@ export async function compactSession(
   if (!config.apiKey) throw new Error('TYPESAFE_API_KEY is not configured');
   const result = await compact(
     messages,
-    jevAsker(fetchFn, config.apiKey, config.model, config.baseUrl),
+    systemOneAsker(fetchFn, config.apiKey, config.model, config.baseUrl),
     config,
   );
   return { result, messages: toSessionMessages(messages, result.messages) };

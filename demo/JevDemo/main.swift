@@ -15,7 +15,7 @@ enum Verdict: Equatable {
     }
 }
 
-/// Jev's two answers about one tool call: keep the call, keep its full result.
+/// System One's two answers about one tool call: keep the call, keep its full result.
 struct CallScore: Equatable {
     let call: Double
     let result: Double

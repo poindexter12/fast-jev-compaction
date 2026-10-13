@@ -1,16 +1,16 @@
 # fast-jev-compaction Claude Code mod
 
 This plugin uses Claude Code function hooks to replace a compaction with the
-original messages, minus the tool calls and tool results Jev judged no longer
+original messages, minus the tool calls and tool results System One judged no longer
 needed. `hooks/fast-jev.ts` is a thin adapter: it reads the plugin options,
 finds the TypeSafe key, hands `session.compact` transcripts to the
 `fast-jev-compaction` library in `src/` (the plugin folder is the repository
 root, so the hook imports it directly) and maps the result back onto session
-messages. User and assistant text is never touched. Jev is sent the whole
+messages. User and assistant text is never touched. System One is sent the whole
 conversation as `state` (tool outputs replaced by a one-line note) and, for
 every tool call outside the pinned first and newest messages, two questions:
 whether the call should stay and whether its full output should stay. An
-item is kept when Jev's probability reaches `keepThreshold`; a dropped result
+item is kept when System One's probability reaches `keepThreshold`; a dropped result
 is truncated to its first `truncateHeadChars` characters plus a one-line note,
 and a dropped call disappears with its result.
 
@@ -69,8 +69,8 @@ development setup.
 
 Every option except `apiKey`, `compactAtPercent`, `minReductionRatio`,
 `model` and `baseUrl` is passed straight to the library; see the root
-README for what they do. The `session.compact` hook runs the Jev requests
-concurrently. If Jev fails, the response is malformed, the key is
+README for what they do. The `session.compact` hook runs the System One requests
+concurrently. If System One fails, the response is malformed, the key is
 unavailable, the history cannot be fitted into the state budget, or the
 estimated reduction is below `minReductionRatio`, the hook logs a fallback
 and delegates to Claude Code's built-in compaction. The outcome is shown as

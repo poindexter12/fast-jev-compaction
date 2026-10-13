@@ -46,7 +46,7 @@ function transcript(): SessionMessage[] {
   ];
 }
 
-function jevFetch(
+function systemOneFetch(
   answer: (name: string) => number,
   bodies: string[] = [],
   urls: string[] = [],
@@ -139,7 +139,7 @@ describe('compactSession', () => {
     const { result: output, messages } = await compactSession(
       transcript(),
       config,
-      jevFetch((name) => (name === 'call_t2' || name === 'result_t2' ? 0.9 : 0.1), bodies),
+      systemOneFetch((name) => (name === 'call_t2' || name === 'result_t2' ? 0.9 : 0.1), bodies),
     );
     expect(bodies).toHaveLength(1);
     expect(JSON.parse(bodies[0]!).model).toBe('jev-x');
@@ -152,7 +152,7 @@ describe('compactSession', () => {
 
   it('splits a long decision log into ui.log lines under the host limit', async () => {
     const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
-    const { result: output } = await compactSession(transcript(), config, jevFetch(() => 0.1));
+    const { result: output } = await compactSession(transcript(), config, systemOneFetch(() => 0.1));
     const lines = decisionLogLines(output, 60);
     expect(lines).toEqual([
       'decisions (1/2): t1:Read:drop_call/call=0.10/result=0.10',
@@ -165,7 +165,7 @@ describe('compactSession', () => {
   it('posts to the configured endpoint and defaults to TypeSafe', async () => {
     const base = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
     const fallback: string[] = [];
-    await compactSession(transcript(), base, jevFetch(() => 0.1, [], fallback));
+    await compactSession(transcript(), base, systemOneFetch(() => 0.1, [], fallback));
     expect(fallback).toEqual([SYSTEM_ONE_URL]);
 
     const panel = 'http://prod.decision-panel.inference.mgmt.home.arpa:8420/v1/systemone';
@@ -173,14 +173,14 @@ describe('compactSession', () => {
     await compactSession(
       transcript(),
       { ...base, baseUrl: panel },
-      jevFetch(() => 0.1, [], routed),
+      systemOneFetch(() => 0.1, [], routed),
     );
     expect(routed).toEqual([panel]);
   });
 
   it('throws on a missing key and on failed requests so the hook falls back', async () => {
     const config = resolveHookConfig({ preserveRecentMessages: 1 });
-    await expect(compactSession(transcript(), config, jevFetch(() => 0))).rejects.toThrow(/TYPESAFE_API_KEY/);
+    await expect(compactSession(transcript(), config, systemOneFetch(() => 0))).rejects.toThrow(/TYPESAFE_API_KEY/);
     await expect(
       compactSession(transcript(), { ...config, apiKey: 'k' }, async () => ({ status: 500, ok: false, text: 'x' })),
     ).rejects.toThrow(/500/);

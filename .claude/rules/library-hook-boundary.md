@@ -21,6 +21,6 @@ dependency and keep the split:
   unit test and have the hook call it.
 - `src/` must stay free of any `claude-code` type import. Those types belong to `hooks/` and
   `types/claude-code.d.ts`. The library has to stay usable by a caller that brings its own
-  transport through `JevAsker`.
+  transport through `SystemOneAsker`.
 - Never let a tool result survive without its tool call, in either layer. That invariant is the
   whole reason the output stays valid.

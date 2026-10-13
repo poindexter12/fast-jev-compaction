@@ -1,7 +1,7 @@
 {
   "name": "fast-jev-compaction",
   "version": "0.3.0",
-  "description": "Verbatim Jev-guided compaction for Claude Code sessions.",
+  "description": "Verbatim compaction for Claude Code sessions, guided by System One.",
   "license": "MIT",
   "userConfig": {
     "apiKey": {
@@ -18,7 +18,7 @@
     "keepThreshold": {
       "type": "number",
       "title": "Keep threshold",
-      "description": "Minimum Jev probability that a tool call or tool result is still needed; below it the item is removed.",
+      "description": "Minimum System One probability that a tool call or tool result is still needed; below it the item is removed.",
       "default": 0.5
     },
     "preserveRecentMessages": {
@@ -41,31 +41,31 @@
     },
     "maxStateTokens": {
       "type": "number",
-      "title": "Maximum Jev state tokens",
-      "description": "Estimated token budget for the conversation state sent with every Jev request.",
+      "title": "Maximum System One state tokens",
+      "description": "Estimated token budget for the conversation state sent with every System One request.",
       "default": 25000
     },
     "maxRequestTokens": {
       "type": "number",
-      "title": "Maximum Jev request tokens",
-      "description": "Estimated token budget for state plus questions in one Jev request.",
+      "title": "Maximum System One request tokens",
+      "description": "Estimated token budget for state plus questions in one System One request.",
       "default": 30000
     },
     "maxRequestChars": {
       "type": "number",
-      "title": "Maximum Jev request characters",
-      "description": "Exact character ceiling for one Jev request, for an endpoint that caps the bytes it reads rather than estimated tokens. Leave unset for TypeSafe, which needs only the token budgets."
+      "title": "Maximum System One request characters",
+      "description": "Exact character ceiling for one System One request, for an endpoint that caps the bytes it reads rather than estimated tokens. Leave unset for TypeSafe, which needs only the token budgets."
     },
     "truncateHeadChars": {
       "type": "number",
       "title": "Truncated tool result head",
-      "description": "Characters of a tool result kept when Jev decides its full output is no longer needed; 0 keeps only the note.",
+      "description": "Characters of a tool result kept when System One decides its full output is no longer needed; 0 keeps only the note.",
       "default": 300
     },
     "model": {
       "type": "string",
-      "title": "Jev model",
-      "description": "TypeSafe Jev model name.",
+      "title": "Model",
+      "description": "Model name sent with every System One request; TypeSafe serves jev-latest.",
       "default": "jev-latest"
     }
   }

@@ -32,7 +32,7 @@ export interface Message {
 
 /** A tool call paired with its result by `tool_use_id`. */
 export interface ToolCall {
-  /** Short id used in the Jev state and question names (`t1`, `t2`, ...). */
+  /** Short id used in the System One state and question names (`t1`, `t2`, ...). */
   id: string;
   tool_use_id: string;
   tool: string;
@@ -48,9 +48,9 @@ export interface ToolCall {
 }
 
 export interface CallAnswer {
-  /** Jev's probability that the call itself still matters. */
+  /** System One's probability that the call itself still matters. */
   keepCall: number;
-  /** Jev's probability that the full result still needs to stay verbatim. */
+  /** System One's probability that the full result still needs to stay verbatim. */
   keepResult: number;
 }
 
@@ -78,7 +78,7 @@ export interface HistoryEntry {
   tool_calls?: HistoryToolCall[] | string[];
 }
 
-/** The state sent with every Jev request: the whole history, results omitted. */
+/** The state sent with every System One request: the whole history, results omitted. */
 export interface CompactionState {
   context: string;
   goal: string;
@@ -149,8 +149,8 @@ export interface CompactResult {
   };
 }
 
-/** The `state` of a Jev request: a string or any JSON-serialisable object. */
-export type JevState = string | object;
+/** The `state` of a System One request: a string or any JSON-serialisable object. */
+export type SystemOneState = string | object;
 
 export interface NoulQuestion {
   type: 'noul';
@@ -173,8 +173,8 @@ export interface ScoreQuestion {
   criteria: string[];
 }
 
-export type JevQuestion = NoulQuestion | ChoiceQuestion | ScoreQuestion;
-export type JevQuestions = Record<string, JevQuestion>;
+export type SystemOneQuestion = NoulQuestion | ChoiceQuestion | ScoreQuestion;
+export type SystemOneQuestions = Record<string, SystemOneQuestion>;
 
 export interface NoulAnswer {
   type?: 'noul';
@@ -195,11 +195,11 @@ export interface ScoreAnswer {
   probabilities: Record<string, number>;
 }
 
-export type JevAnswer = NoulAnswer | ChoiceAnswer | ScoreAnswer;
+export type SystemOneAnswer = NoulAnswer | ChoiceAnswer | ScoreAnswer;
 
-export interface JevResponse {
+export interface SystemOneResponse {
   model?: string;
-  answers: Record<string, JevAnswer>;
+  answers: Record<string, SystemOneAnswer>;
   usage?: {
     input_tokens?: number;
     output_tokens?: number;
@@ -207,7 +207,7 @@ export interface JevResponse {
   [key: string]: unknown;
 }
 
-/** Anything that can answer Jev questions: `JevClient`, or a host-provided adapter. */
-export interface JevAsker {
-  ask(state: JevState, questions: JevQuestions): Promise<JevResponse>;
+/** Anything that can answer System One questions: `SystemOneClient`, or a host-provided adapter. */
+export interface SystemOneAsker {
+  ask(state: SystemOneState, questions: SystemOneQuestions): Promise<SystemOneResponse>;
 }
