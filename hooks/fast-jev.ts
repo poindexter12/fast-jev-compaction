@@ -66,6 +66,7 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
     'preserveRecentMessages',
     'maxStateTokens',
     'maxRequestTokens',
+    'maxRequestChars',
     'truncateHeadChars',
   ] as const) {
     const value = options[key];

@@ -11,6 +11,7 @@ import {
   fitState,
   JevClient,
   parseJevResponse,
+  questionsFor,
   reductionRatio,
   resolveOptions,
   type HistoryToolCall,
@@ -67,6 +68,7 @@ function fakeJev(answer: (name: string) => number, seen: Seen[] = []): JevAsker 
 
 const fit = {
   maxStateTokens: 25_000,
+  maxStateChars: Number.POSITIVE_INFINITY,
   preserveRecentMessages: 0,
   goal: 'fix the test',
 };
@@ -89,6 +91,27 @@ describe('options', () => {
       preserveRecentMessages: 2,
       truncateHeadChars: 0,
     });
+  });
+
+  it('leaves the character budgets off unless asked for', () => {
+    expect(resolveOptions().maxRequestChars).toBe(Number.POSITIVE_INFINITY);
+    expect(resolveOptions().maxStateChars).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('derives the state character budget from the request one', () => {
+    // 8192 tokens at the panel's 2.8 chars per token, the case this exists for.
+    const resolved = resolveOptions({ maxRequestChars: 22_937 });
+    expect(resolved.maxRequestChars).toBe(22_937);
+    expect(resolved.maxStateChars).toBe(22_937 - 50 - 500);
+  });
+
+  it('clamps the state token budget to what the request budget leaves for questions', () => {
+    const resolved = resolveOptions({ maxRequestTokens: 8_192 });
+    expect(resolved.maxStateTokens).toBe(8_192 - 20 - 160);
+    expect(resolveOptions({ maxStateTokens: 1_000, maxRequestTokens: 8_192 }).maxStateTokens).toBe(
+      1_000,
+    );
+    expect(resolveOptions({ maxRequestTokens: 1 }).maxStateTokens).toBe(1);
   });
 });
 
@@ -224,6 +247,30 @@ describe('state fitting', () => {
     const messages = [message('user', 'a'.repeat(2000)), message('assistant', 'b')];
     expect(() => fitState(messages, [], { ...fit, maxStateTokens: 50 })).toThrow(/too large/);
   });
+
+  it('reports the exact serialised length and shrinks on it alone', () => {
+    const messages = transcript();
+    const full = fitState(messages, collectToolCalls(messages, 0), fit);
+    // One comma is charged per entry where n entries need n - 1, so the count
+    // sits exactly one character above the real length. Never below it.
+    expect(full.chars).toBe(JSON.stringify(full.state).length + 1);
+
+    const capped = fitState(messages, collectToolCalls(messages, 0), {
+      ...fit,
+      maxStateChars: Math.floor(full.chars * 0.8),
+      preserveRecentMessages: 1,
+    });
+    expect(capped.stage).not.toBe('full');
+    expect(capped.chars).toBeLessThanOrEqual(Math.floor(full.chars * 0.8));
+    expect(JSON.stringify(capped.state).length).toBeLessThanOrEqual(capped.chars);
+  });
+
+  it('names characters in the error when that is the binding limit', () => {
+    const messages = [message('user', 'a'.repeat(2000)), message('assistant', 'b')];
+    expect(() => fitState(messages, [], { ...fit, maxStateChars: 100 })).toThrow(
+      /chars after truncation, limit 100/,
+    );
+  });
 });
 
 describe('question batching', () => {
@@ -238,20 +285,38 @@ describe('question batching', () => {
     isError: false,
     pinned: false,
   }));
-  const options = { maxRequestTokens: 30_000 };
+  const options = { maxRequestTokens: 30_000, maxRequestChars: Number.POSITIVE_INFINITY };
+  const state = (tokens: number, chars = 0) => ({ tokens, chars });
 
   it('puts everything in one request when it fits', () => {
-    expect(batchCalls(calls, 1000, options)).toHaveLength(1);
+    expect(batchCalls(calls, state(1000), options)).toHaveLength(1);
   });
 
   it('splits questions across requests when the state leaves little room', () => {
-    const batches = batchCalls(calls, 29_600, options);
+    const batches = batchCalls(calls, state(29_600), options);
     expect(batches.length).toBeGreaterThan(1);
     expect(batches.flat().map((c) => c.id)).toEqual(calls.map((c) => c.id));
   });
 
   it('throws when a single question does not fit', () => {
-    expect(() => batchCalls(calls, 29_990, options)).toThrow(/no room/);
+    expect(() => batchCalls(calls, state(29_990), options)).toThrow(/no room/);
+  });
+
+  it('splits on the character budget while the token budget still has room', () => {
+    const chars = { maxRequestTokens: 30_000, maxRequestChars: 2_000 };
+    const batches = batchCalls(calls, state(100, 100), chars);
+    expect(batches.length).toBeGreaterThan(1);
+    expect(batches.flat().map((c) => c.id)).toEqual(calls.map((c) => c.id));
+    for (const batch of batches) {
+      const length = JSON.stringify(Object.assign({}, ...batch.map(questionsFor))).length;
+      expect(length).toBeLessThanOrEqual(2_000 - 100);
+    }
+  });
+
+  it('throws when the character budget leaves no room for one question pair', () => {
+    expect(() =>
+      batchCalls(calls, state(100, 1_900), { maxRequestTokens: 30_000, maxRequestChars: 2_000 }),
+    ).toThrow(/no room for questions \(1900 of 2000 chars\)/);
   });
 });
 

@@ -88,6 +88,8 @@ export interface CompactionState {
 export interface FittedState {
   state: CompactionState;
   tokens: number;
+  /** Serialised length of the state, for a host that caps characters. */
+  chars: number;
   /** Which fitting stage produced the state, for diagnostics. */
   stage: string;
 }
@@ -103,6 +105,12 @@ export interface CompactOptions {
   maxStateTokens?: number;
   /** Estimated token ceiling for state plus one batch of questions. Default 30000. */
   maxRequestTokens?: number;
+  /**
+   * Exact character ceiling for the serialised request, for an endpoint that
+   * caps the bytes it reads rather than estimated tokens. Unset means no
+   * character limit, which is the only budget TypeSafe needs.
+   */
+  maxRequestChars?: number;
   /** Characters of a dropped tool result to retain. Default 300. */
   truncateHeadChars?: number;
 }
@@ -113,6 +121,9 @@ export interface ResolvedCompactOptions {
   preserveRecentMessages: number;
   maxStateTokens: number;
   maxRequestTokens: number;
+  maxRequestChars: number;
+  /** Derived from `maxRequestChars`, never set by the caller, so the two cannot drift. */
+  maxStateChars: number;
   truncateHeadChars: number;
 }
 

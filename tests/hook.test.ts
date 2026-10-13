@@ -66,17 +66,23 @@ describe('hook config', () => {
   it('reads userConfig values and falls back to defaults', () => {
     expect(resolveHookConfig({})).toEqual({ compactAtPercent: 60, minReductionRatio: 0.25, model: 'jev-latest' });
     expect(
-      resolveHookConfig({ apiKey: 'k', baseUrl: 'http://local/v1/systemone', keepThreshold: 0.3, maxStateTokens: 1000, model: 'jev-x', goal: 'g', compactAtPercent: 'no' }),
+      resolveHookConfig({ apiKey: 'k', baseUrl: 'http://local/v1/systemone', keepThreshold: 0.3, maxStateTokens: 1000, maxRequestChars: 22_937, model: 'jev-x', goal: 'g', compactAtPercent: 'no' }),
     ).toEqual({
       apiKey: 'k',
       baseUrl: 'http://local/v1/systemone',
       keepThreshold: 0.3,
       maxStateTokens: 1000,
+      maxRequestChars: 22_937,
       model: 'jev-x',
       goal: 'g',
       compactAtPercent: 60,
       minReductionRatio: 0.25,
     });
+  });
+
+  it('leaves maxRequestChars out when it is unset, so the budget stays off', () => {
+    expect(resolveHookConfig({}).maxRequestChars).toBeUndefined();
+    expect(resolveHookConfig({ maxRequestChars: 'lots' }).maxRequestChars).toBeUndefined();
   });
 
   it('ignores a blank baseUrl so the default endpoint survives', () => {
