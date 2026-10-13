@@ -28,9 +28,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The floor that package.json engines declares, plus the two current
-        # LTS lines. A break on 18 alone is a real break while engines says >=18.
-        node: ['18', '22', '24']
+        # The two lines this fork supports: 24 is the floor package.json engines
+        # declares, 26 is what local development and .mise.toml run on. 18 and
+        # 22 were dropped deliberately; nothing here needs them.
+        node: ['24', '26']
     steps:
       - uses: actions/checkout@v4
 
