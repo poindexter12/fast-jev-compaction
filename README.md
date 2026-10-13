@@ -101,7 +101,7 @@ put it in a source file.
 | Option | Default | Description |
 | --- | --- | --- |
 | `apiKey` | `TYPESAFE_API_KEY` | TypeSafe API key (`compactMessages`/`SystemOneClient`) |
-| `model` | `jev-latest` | System One model name |
+| `model` | `jev-latest` | Model name sent with every System One request |
 | `baseUrl` | `https://api.typesafe.ai/v1/systemone` | System One endpoint |
 | `fetch` | native `fetch` | Injectable fetch implementation for tests |
 | `goal` | last 3 user prompts | Ongoing task description included in the state |
