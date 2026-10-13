@@ -1,0 +1,83 @@
+# Tech landscape
+
+*Last Updated: 2026-10-13*
+
+## Stack
+
+| Layer | Choice | Notes |
+|---|---|---|
+| Language | TypeScript 5.7, strict | ESM throughout (`"type": "module"`); relative imports carry the `.js` extension |
+| Runtime | Node 24 and 26 | `engines.node` is `>=24`; CI runs both. Node 18 and 22 were dropped deliberately |
+| Runtime deps | none | the published package has zero dependencies |
+| Dev deps | `typescript`, `vitest` 2, `tsx`, `@types/node` | four, and a new one needs a nameable gap |
+| Tests | vitest over `tests/` | two suites plus a naming guard; all offline |
+| Build | `tsc` to `dist/` | `declaration` + `declarationMap` + `sourceMap`, `noEmitOnError` |
+| Toolchain pin | `.mise.toml` | `node = "26"`, `auto_install = true` |
+| CI | GitHub Actions | `.github/workflows/ci.yml`, matrix over Node 24 and 26 |
+| Demo (optional) | Swift / SwiftUI, macOS | `demo/SystemOneDemo/`, built by `build.sh`, needs a real Xcode toolchain |
+
+The long-term intent is a rewrite in Rust or Go, so TypeScript tooling investment is kept
+deliberately light: no linter, no formatter, no bundler, no framework.
+
+## Two TypeScript projects, two configs
+
+A single `tsc --noEmit` checks only half the tree. Both halves matter:
+
+| Config | Covers | Shape |
+|---|---|---|
+| `tsconfig.json` | `src/**/*.ts` | `NodeNext` module + resolution, emits to `dist/`, `rootDir: src` |
+| `tsconfig.hooks.json` | `hooks/`, `types/` | `noEmit`, `moduleResolution: bundler`, `types: []`, `noUncheckedIndexedAccess`, and a `paths` mapping of `claude-code` to `types/claude-code.d.ts` |
+
+`npm run typecheck` runs both, in that order. Never substitute a bare `tsc --noEmit` for it.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `npm run typecheck` | `tsc --noEmit` then `npm run typecheck:hooks`; both halves |
+| `npm test` | `vitest run` over `tests/`; offline, no key needed |
+| `npm run validate:plugin` | `claude plugin validate .claude-plugin/plugin.json`; needs the `claude` CLI, so it is a local-only gate |
+| `npm run build` | `tsc` to `dist/` |
+| `npm run demo` | `tsx examples/demo.ts`; the only path that reaches the network, needs `TYPESAFE_API_KEY` |
+
+The first three are the verification gates (`.claude/rules/verification.md`). `npm run demo` is a
+manual live check, never part of the gate set.
+
+CI runs typecheck, test and build on Node 24 and 26. It deliberately omits `validate:plugin`,
+because no runner has the `claude` CLI, and it needs no secrets: the suites drive a fake System One,
+so a test that wants `TYPESAFE_API_KEY` is a defect in the test rather than a missing CI secret.
+
+## Source of truth
+
+| Question | File |
+|---|---|
+| Package name, version, scripts, engines | `package.json` |
+| Plugin name, version, and every `userConfig` key the install prompt shows | `.claude-plugin/plugin.json` |
+| Marketplace owner and install spec | `.claude-plugin/marketplace.json` |
+| Which hook module loads | `hooks/hooks.json` |
+| Claude Code's engine API surface, as this repo uses it | `types/claude-code.d.ts` (hand-maintained) |
+| Default option values | `DEFAULT_OPTIONS` in `src/compact.ts`, mirrored as `default` in `plugin.json` |
+| Host policy defaults | `HOOK_DEFAULTS` in `hooks/fast-systemone.ts` |
+| Local toolchain | `.mise.toml` |
+
+Four files carry a version and they drift: `package.json`, `.claude-plugin/plugin.json`,
+`.claude-plugin/marketplace.json`, and `package-lock.json`, which mirrors `package.json` twice. At
+the time of writing the manifests say 0.3.0 and `package.json` says 0.2.0, which is an open
+decision, not an accident. `.claude/rules/fork-topology.md` owns the policy; bring the lockfile along
+with `npm install --package-lock-only` rather than editing it.
+
+The `userConfig` keys in `plugin.json` are read by name in `resolveHookConfig`, so renaming one
+breaks the install prompt silently. That is why `validate:plugin` is a gate.
+
+## Secrets
+
+The TypeSafe key is never in the tree. It comes from the plugin's `apiKey` option, the
+`TYPESAFE_API_KEY` environment variable, or `env.TYPESAFE_API_KEY` in Claude Code settings, resolved
+in that order by `getApiKey` in `hooks/fast-systemone.ts`. `.mise.toml` deliberately does not manage
+it. Do not write it into a source file, a fixture, a committed settings file, or a manifest default.
+
+## External services
+
+One, and only from two places: `POST https://api.typesafe.ai/v1/systemone`, reached by
+`SystemOneClient` (`src/client.ts`, global `fetch`) and by the hook's `systemOneAsker` over the
+engine's `$.http.fetch`. `baseUrl` redirects both. Nothing else in the repo makes a network call.

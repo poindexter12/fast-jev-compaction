@@ -1,0 +1,48 @@
+# fast-systemone-compaction : codebase map
+
+*Last Updated: 2026-10-13*
+
+One repository, two artifacts. The `fast-systemone-compaction` npm package in `src/` decides what a
+coding-agent transcript can lose, by asking TypeSafe's System One API, for every tool call, whether
+the call and whether its full result still matter. The Claude Code function-hook plugin in `hooks/`
+plus `.claude-plugin/` is an adapter that runs that library against a live session on
+`session.compact`. Nothing is summarised: what survives is verbatim, and what does not is deleted.
+
+This is a deliberately divergent fork of `tamaratran/fast-jev-compaction`, published under its own
+name because the protocol is System One and `jev-latest` is only one model that speaks it.
+
+## Documents
+
+| Document | What it answers |
+|---|---|
+| [architecture.md](architecture.md) | The two artifacts, the compaction pipeline, the state-fitting ladder, the budgets, the fallback |
+| [tech-landscape.md](tech-landscape.md) | Languages, runtimes, toolchain, commands, CI, and which file is source of truth for what |
+| [patterns.md](patterns.md) | Error handling, option resolution, the invariants, the test harness, and the tacit conventions (there is no linter) |
+| [onboarding.md](onboarding.md) | Getting a working tree green, common tasks, and the known-broken things that are not your fault |
+
+## Structure
+
+Structural questions go to the graph, not to a document: `graphify-out/graph.json` is extracted from
+the AST and is the only copy.
+
+```bash
+graphify explain "fitState()"             # one symbol and its neighbours, with file:line
+graphify path "compact()" "fitState()"    # shortest path between two nodes
+graphify query "where does execution start"
+```
+
+Refresh it with `graphify update .` after code changes: deterministic, AST only, no LLM and no API
+cost. `graphify-out/GRAPH_REPORT.md` records the commit it was built from, so compare that against
+`git rev-parse HEAD` before trusting it.
+
+## How to use and maintain this map
+
+Read this index first and open a document when you need it. These documents cover the project's
+shape and conventions; they deliberately do not restate `.claude/rules/*.md`, which Claude Code
+already loads every session and which own the working agreements (atomic commits, the verification
+gates, the library/hook boundary, the fork's naming line). Where a rule and a document overlap, the
+rule wins.
+
+Keep the map honest as the code moves: update the affected document, then re-run the state writer so
+staleness stays detectable. Every path cited here was verified to exist at the commit in
+`.map-state.json`.
