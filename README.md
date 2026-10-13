@@ -146,7 +146,7 @@ Then add this repository as a plugin marketplace and install the plugin,
 either from the shell or as slash commands inside a session:
 
 ```sh
-claude plugin marketplace add tamaratran/fast-jev-compaction
+claude plugin marketplace add poindexter12/fast-systemone-compaction
 claude plugin install fast-systemone-compaction@fast-systemone-compaction
 ```
 
