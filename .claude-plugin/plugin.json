@@ -10,6 +10,11 @@
       "description": "TypeSafe API key. Leave unset to use TYPESAFE_API_KEY.",
       "sensitive": true
     },
+    "baseUrl": {
+      "type": "string",
+      "title": "System One endpoint URL",
+      "description": "Full URL of the System One endpoint, including the /v1/systemone path. Leave unset for TypeSafe at https://api.typesafe.ai/v1/systemone. Set it to route to a self-hosted endpoint; the model option still chooses the model."
+    },
     "keepThreshold": {
       "type": "number",
       "title": "Keep threshold",

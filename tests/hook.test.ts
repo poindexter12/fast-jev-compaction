@@ -7,7 +7,13 @@ import {
   summarize,
   toSessionMessages,
 } from '../hooks/fast-jev.ts';
-import { applyDecisions, collectToolCalls, decideCall, type Message } from '../src/index.js';
+import {
+  applyDecisions,
+  collectToolCalls,
+  decideCall,
+  type Message,
+  SYSTEM_ONE_URL,
+} from '../src/index.js';
 
 type SessionMessage = Message & { handle?: string };
 
@@ -40,8 +46,13 @@ function transcript(): SessionMessage[] {
   ];
 }
 
-function jevFetch(answer: (name: string) => number, bodies: string[] = []) {
-  return async (_url: string, init?: { body?: string }) => {
+function jevFetch(
+  answer: (name: string) => number,
+  bodies: string[] = [],
+  urls: string[] = [],
+) {
+  return async (url: string, init?: { body?: string }) => {
+    urls.push(url);
     bodies.push(init?.body ?? '');
     const { questions } = JSON.parse(init?.body ?? '{}') as { questions: Record<string, unknown> };
     const answers = Object.fromEntries(
@@ -55,9 +66,10 @@ describe('hook config', () => {
   it('reads userConfig values and falls back to defaults', () => {
     expect(resolveHookConfig({})).toEqual({ compactAtPercent: 60, minReductionRatio: 0.25, model: 'jev-latest' });
     expect(
-      resolveHookConfig({ apiKey: 'k', keepThreshold: 0.3, maxStateTokens: 1000, model: 'jev-x', goal: 'g', compactAtPercent: 'no' }),
+      resolveHookConfig({ apiKey: 'k', baseUrl: 'http://local/v1/systemone', keepThreshold: 0.3, maxStateTokens: 1000, model: 'jev-x', goal: 'g', compactAtPercent: 'no' }),
     ).toEqual({
       apiKey: 'k',
+      baseUrl: 'http://local/v1/systemone',
       keepThreshold: 0.3,
       maxStateTokens: 1000,
       model: 'jev-x',
@@ -65,6 +77,11 @@ describe('hook config', () => {
       compactAtPercent: 60,
       minReductionRatio: 0.25,
     });
+  });
+
+  it('ignores a blank baseUrl so the default endpoint survives', () => {
+    expect(resolveHookConfig({ baseUrl: '' }).baseUrl).toBeUndefined();
+    expect(resolveHookConfig({ baseUrl: 42 }).baseUrl).toBeUndefined();
   });
 });
 
@@ -137,6 +154,22 @@ describe('compactSession', () => {
     ]);
     expect(lines.every((line) => line.length <= 60)).toBe(true);
     expect(decisionLogLines({ ...output, decisions: [] })).toEqual(['decisions: (none)']);
+  });
+
+  it('posts to the configured endpoint and defaults to TypeSafe', async () => {
+    const base = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
+    const fallback: string[] = [];
+    await compactSession(transcript(), base, jevFetch(() => 0.1, [], fallback));
+    expect(fallback).toEqual([SYSTEM_ONE_URL]);
+
+    const panel = 'http://prod.decision-panel.inference.mgmt.home.arpa:8420/v1/systemone';
+    const routed: string[] = [];
+    await compactSession(
+      transcript(),
+      { ...base, baseUrl: panel },
+      jevFetch(() => 0.1, [], routed),
+    );
+    expect(routed).toEqual([panel]);
   });
 
   it('throws on a missing key and on failed requests so the hook falls back', async () => {
