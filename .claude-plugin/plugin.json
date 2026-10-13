@@ -1,5 +1,5 @@
 {
-  "name": "fast-jev-compaction",
+  "name": "fast-systemone-compaction",
   "version": "0.3.0",
   "description": "Verbatim compaction for Claude Code sessions, guided by System One.",
   "license": "MIT",

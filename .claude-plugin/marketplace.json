@@ -1,12 +1,12 @@
 {
-  "name": "fast-jev-compaction",
+  "name": "fast-systemone-compaction",
   "owner": {
     "name": "tamaratran",
     "url": "https://github.com/tamaratran"
   },
   "plugins": [
     {
-      "name": "fast-jev-compaction",
+      "name": "fast-systemone-compaction",
       "source": "./",
       "description": "Verbatim compaction for Claude Code sessions, guided by System One.",
       "version": "0.3.0",

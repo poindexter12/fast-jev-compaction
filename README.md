@@ -1,4 +1,4 @@
-# fast-jev-compaction
+# fast-systemone-compaction
 
 Claude Code plugin that replaces the compaction summary with System One decisions:
 every tool call and result is scored in one fast request, stale ones are
@@ -59,12 +59,12 @@ fitted throw; the caller (or the Claude Code hook) decides what to fall back to.
 ## Install and usage
 
 ```sh
-npm install fast-jev-compaction
+npm install fast-systemone-compaction
 export TYPESAFE_API_KEY=...
 ```
 
 ```ts
-import { compactMessages, reductionRatio, type Message } from 'fast-jev-compaction';
+import { compactMessages, reductionRatio, type Message } from 'fast-systemone-compaction';
 
 const transcript: Message[] = [
   { role: 'user', text: 'Fix the failing test. Never edit src/generated.', toolUses: [] },
@@ -127,7 +127,7 @@ stage was needed, and the number of requests.
 
 ## Claude Code plugin
 
-The repository root is a Claude Code function-hook plugin: `hooks/fast-jev.ts`
+The repository root is a Claude Code function-hook plugin: `hooks/fast-systemone.ts`
 is a thin adapter that feeds `session.compact` transcripts through `src/` and
 falls back to Claude Code's built-in summary on errors or insufficient
 reduction. See [`hooks/README.md`](hooks/README.md) for configuration and the
@@ -147,14 +147,14 @@ either from the shell or as slash commands inside a session:
 
 ```sh
 claude plugin marketplace add tamaratran/fast-jev-compaction
-claude plugin install fast-jev-compaction@fast-jev-compaction
+claude plugin install fast-systemone-compaction@fast-systemone-compaction
 ```
 
 The install prompts for the plugin options (API key, thresholds, `truncateHeadChars`,
 …); leave them at their defaults to use `TYPESAFE_API_KEY` from the environment.
 Restart Claude Code or run `/reload-plugins`. From then on `/compact` (and
 auto-compaction) goes through System One: the toast reads
-`fast-jev-compaction: kept N/M messages, no summary (…)` when the pruned history
+`fast-systemone-compaction: kept N/M messages, no summary (…)` when the pruned history
 replaced the built-in summary, or `fallback to built-in summary (…)` when System One
 could not remove enough (short sessions, or when it fails).
 
@@ -178,14 +178,14 @@ network check.
 
 ## Animated demo (macOS)
 
-`demo/JevDemo` is a small native SwiftUI app that plays a scripted, dramatized
+`demo/SystemOneDemo` is a small native SwiftUI app that plays a scripted, dramatized
 version of the compaction flow inside a Claude Code-style terminal: the tool
 calls of a canned transcript are scored, results and calls System One lets go turn red
 and collapse away, and the rest stays verbatim. It never calls the API; it
 exists to be screen recorded.
 
 ```sh
-demo/JevDemo/build.sh   # builds demo/JevDemo/build/JevDemo.app and launches it
+demo/SystemOneDemo/build.sh   # builds demo/SystemOneDemo/build/SystemOneDemo.app and launches it
 ```
 
 Press space in the app to replay from the start.

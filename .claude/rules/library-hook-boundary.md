@@ -3,16 +3,16 @@ description: Compaction logic lives in src/, the hook stays an adapter
 paths: ["src/**/*.ts", "hooks/**/*.ts"]
 priority: 60
 ---
-This repository is two things at once: the `fast-jev-compaction` npm package in `src/`, and a
+This repository is two things at once: the `fast-systemone-compaction` npm package in `src/`, and a
 Claude Code function-hook plugin in `hooks/` plus `.claude-plugin/`. The plugin folder is the
-repository root, so `hooks/fast-jev.ts` imports `../src/*.js` directly. Keep that direction of
+repository root, so `hooks/fast-systemone.ts` imports `../src/*.js` directly. Keep that direction of
 dependency and keep the split:
 
 - Every compaction decision belongs in `src/`: pairing calls to results, fitting the state,
   batching questions, scoring against `keepThreshold`, rebuilding the message list. If a change
   touches what gets kept, dropped, or truncated, it belongs in `src/compact.ts`, `src/state.ts`,
   or `src/request.ts`, never in the hook.
-- `hooks/fast-jev.ts` is an adapter and nothing more: read `userConfig` through `PluginOptions`,
+- `hooks/fast-systemone.ts` is an adapter and nothing more: read `userConfig` through `PluginOptions`,
   resolve the TypeSafe key, map Claude Code's `SessionMessage` to and from the library's
   `Message`, call `compact`, and decide the fallback. It owns the `compactAtPercent` and
   `minReductionRatio` host policy because those are host concerns; it owns no scoring logic.
