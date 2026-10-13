@@ -1,0 +1,38 @@
+{
+  "enabledPlugins": {
+    "sidequest@loadout": true,
+    "live-rules@loadout": true,
+    "codebase-mapper@loadout": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(pwd)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git fetch:*)",
+      "Bash(git branch:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run validate:plugin:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)"
+    ]
+  }
+}

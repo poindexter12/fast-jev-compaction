@@ -186,7 +186,8 @@ export function goalFromMessages(messages: readonly Message[]): string {
 
 /**
  * Builds the Jev state from the whole conversation and shrinks it in stages
- * until it fits `maxStateTokens`: tool inputs are truncated, then long texts
+ * until it fits both `maxStateTokens` and `maxStateChars`: tool inputs are
+ * truncated, then long texts
  * are abridged oldest-first (pinned messages last), then old messages collapse
  * to a one-line note, then old tool calls shrink to one line each, then old
  * messages that carry no call are left out, then runs of old call-only
@@ -195,7 +196,10 @@ export function goalFromMessages(messages: readonly Message[]): string {
 export function fitState(
   messages: readonly Message[],
   calls: readonly ToolCall[],
-  options: Pick<ResolvedCompactOptions, 'maxStateTokens' | 'preserveRecentMessages' | 'goal'>,
+  options: Pick<
+    ResolvedCompactOptions,
+    'maxStateTokens' | 'maxStateChars' | 'preserveRecentMessages' | 'goal'
+  >,
 ): FittedState {
   const goal = options.goal || goalFromMessages(messages);
   const stateOf = (history: HistoryEntry[]): CompactionState => ({
@@ -203,38 +207,58 @@ export function fitState(
     goal,
     history,
   });
-  const entryTokens = (entry: HistoryEntry): number => estimateTokens(JSON.stringify(entry)) + 1;
-  const baseTokens = estimateTokens(JSON.stringify(stateOf([])));
-  const fitted = (history: HistoryEntry[], tokens: number, stage: string): FittedState => ({
+  /** Both budgets for one entry, measured off a single serialisation. */
+  const entrySize = (entry: HistoryEntry): { tokens: number; chars: number } => {
+    const json = JSON.stringify(entry);
+    return { tokens: estimateTokens(json) + 1, chars: json.length + 1 };
+  };
+  const base = JSON.stringify(stateOf([]));
+  const baseTokens = estimateTokens(base);
+  const baseChars = base.length;
+  const fitted = (
+    history: HistoryEntry[],
+    tokens: number,
+    chars: number,
+    stage: string,
+  ): FittedState => ({
     state: stateOf(history),
     tokens,
+    chars,
     stage,
   });
 
   let history: HistoryEntry[] = [];
-  let perEntry: number[] = [];
+  let perEntry: { tokens: number; chars: number }[] = [];
   let tokens = 0;
+  let chars = 0;
+  const retotal = (): void => {
+    tokens = baseTokens + perEntry.reduce((sum, entry) => sum + entry.tokens, 0);
+    chars = baseChars + perEntry.reduce((sum, entry) => sum + entry.chars, 0);
+  };
   const rebuild = (inputChars: number): void => {
     history = historyEntries(messages, calls, inputChars);
-    perEntry = history.map(entryTokens);
-    tokens = baseTokens + perEntry.reduce((sum, n) => sum + n, 0);
+    perEntry = history.map(entrySize);
+    retotal();
   };
-  const fits = (): boolean => tokens <= options.maxStateTokens;
+  const fits = (): boolean =>
+    tokens <= options.maxStateTokens && chars <= options.maxStateChars;
   const shrink = (index: number, change: (entry: HistoryEntry) => void): void => {
     const entry = history[index];
     if (!entry) return;
     change(entry);
-    const now = entryTokens(entry);
-    tokens += now - (perEntry[index] ?? 0);
+    const now = entrySize(entry);
+    const was = perEntry[index];
+    tokens += now.tokens - (was?.tokens ?? 0);
+    chars += now.chars - (was?.chars ?? 0);
     perEntry[index] = now;
   };
 
   rebuild(INPUT_CHARS[0]);
-  if (fits()) return fitted(history, tokens, 'full');
+  if (fits()) return fitted(history, tokens, chars, 'full');
 
   for (const limit of INPUT_CHARS.slice(1)) {
     rebuild(limit);
-    if (fits()) return fitted(history, tokens, `inputs<=${limit}`);
+    if (fits()) return fitted(history, tokens, chars, `inputs<=${limit}`);
   }
 
   const pinned = (entry: HistoryEntry): boolean =>
@@ -251,7 +275,7 @@ export function fitState(
     shrink(index, (e) => {
       e.text = abridge(e.text, TEXT_HEAD, TEXT_TAIL);
     });
-    if (fits()) return fitted(history, tokens, 'texts abridged');
+    if (fits()) return fitted(history, tokens, chars, 'texts abridged');
   }
 
   for (const index of order) {
@@ -261,7 +285,7 @@ export function fitState(
     shrink(index, (e) => {
       e.text = `[… ${original} chars omitted …]`;
     });
-    if (fits()) return fitted(history, tokens, 'old messages collapsed');
+    if (fits()) return fitted(history, tokens, chars, 'old messages collapsed');
   }
 
   const byMessage = callsByMessage(calls);
@@ -272,7 +296,7 @@ export function fitState(
     shrink(index, (e) => {
       e.tool_calls = own.map(compactCall);
     });
-    if (fits()) return fitted(history, tokens, 'old calls compacted');
+    if (fits()) return fitted(history, tokens, chars, 'old calls compacted');
   }
 
   const left = new Set<number>();
@@ -280,11 +304,14 @@ export function fitState(
     const entry = history[index]!;
     if (pinned(entry) || entry.tool_calls) continue;
     left.add(index);
-    tokens -= perEntry[index] ?? 0;
+    const was = perEntry[index];
+    tokens -= was?.tokens ?? 0;
+    chars -= was?.chars ?? 0;
     if (fits()) {
       return fitted(
         history.filter((_, i) => !left.has(i)),
         tokens,
+        chars,
         'old messages left out',
       );
     }
@@ -294,11 +321,13 @@ export function fitState(
     history.filter((_, i) => !left.has(i)),
     pinned,
   );
-  perEntry = history.map(entryTokens);
-  tokens = baseTokens + perEntry.reduce((sum, n) => sum + n, 0);
-  if (fits()) return fitted(history, tokens, 'old calls merged');
+  perEntry = history.map(entrySize);
+  retotal();
+  if (fits()) return fitted(history, tokens, chars, 'old calls merged');
 
   throw new Error(
-    `history too large for Jev (~${tokens} tokens after truncation, limit ${options.maxStateTokens})`,
+    chars > options.maxStateChars
+      ? `history too large for Jev (~${chars} chars after truncation, limit ${options.maxStateChars})`
+      : `history too large for Jev (~${tokens} tokens after truncation, limit ${options.maxStateTokens})`,
   );
 }

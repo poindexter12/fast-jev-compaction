@@ -6,6 +6,7 @@ import type {
   CompactOptions,
   CompactResult,
   CompactionState,
+  FittedState,
   JevAsker,
   JevQuestions,
   Message,
@@ -20,17 +21,35 @@ export const DEFAULT_OPTIONS: ResolvedCompactOptions = {
   preserveRecentMessages: 6,
   maxStateTokens: 25_000,
   maxRequestTokens: 30_000,
+  maxRequestChars: Number.POSITIVE_INFINITY,
+  maxStateChars: Number.POSITIVE_INFINITY,
   truncateHeadChars: 300,
 };
 
 /** Tokens the request envelope (`model`, key names) adds around state and questions. */
 const REQUEST_OVERHEAD_TOKENS = 20;
+/** Characters of that same envelope; `{"model":"jev-latest","state":"","questions":{}}` is 48. */
+const REQUEST_OVERHEAD_CHARS = 50;
+/**
+ * Room one call's pair of questions needs. The longest tool name seen so far
+ * (a 49-character MCP name) costs 156 tokens in 493 characters.
+ */
+const MIN_QUESTIONS_TOKENS = 160;
+const MIN_QUESTIONS_CHARS = 500;
 
 function finite(value: number | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 export function resolveOptions(options: CompactOptions = {}): ResolvedCompactOptions {
+  const maxRequestTokens = Math.max(
+    1,
+    finite(options.maxRequestTokens, DEFAULT_OPTIONS.maxRequestTokens),
+  );
+  const maxRequestChars = Math.max(
+    1,
+    finite(options.maxRequestChars, DEFAULT_OPTIONS.maxRequestChars),
+  );
   return {
     goal: options.goal ?? DEFAULT_OPTIONS.goal,
     keepThreshold: finite(options.keepThreshold, DEFAULT_OPTIONS.keepThreshold),
@@ -40,10 +59,20 @@ export function resolveOptions(options: CompactOptions = {}): ResolvedCompactOpt
         finite(options.preserveRecentMessages, DEFAULT_OPTIONS.preserveRecentMessages),
       ),
     ),
-    maxStateTokens: Math.max(1, finite(options.maxStateTokens, DEFAULT_OPTIONS.maxStateTokens)),
-    maxRequestTokens: Math.max(
+    // Clamped to what the request budget leaves for one batch of questions, so
+    // raising the request cap alone truncates harder instead of throwing.
+    maxStateTokens: Math.max(
       1,
-      finite(options.maxRequestTokens, DEFAULT_OPTIONS.maxRequestTokens),
+      Math.min(
+        finite(options.maxStateTokens, DEFAULT_OPTIONS.maxStateTokens),
+        maxRequestTokens - REQUEST_OVERHEAD_TOKENS - MIN_QUESTIONS_TOKENS,
+      ),
+    ),
+    maxRequestTokens,
+    maxRequestChars,
+    maxStateChars: Math.max(
+      1,
+      maxRequestChars - REQUEST_OVERHEAD_CHARS - MIN_QUESTIONS_CHARS,
     ),
     truncateHeadChars: Math.max(
       0,
@@ -68,31 +97,46 @@ export function questionsFor(call: ToolCall): JevQuestions {
 
 /**
  * Splits the candidate calls into batches whose questions, together with the
- * (always complete) state, fit one request.
+ * (always complete) state, fit one request. Both budgets have to hold: the
+ * estimated tokens and, when the endpoint caps bytes, the exact characters.
  */
 export function batchCalls(
   calls: readonly ToolCall[],
-  stateTokens: number,
-  options: Pick<ResolvedCompactOptions, 'maxRequestTokens'>,
+  state: Pick<FittedState, 'tokens' | 'chars'>,
+  options: Pick<ResolvedCompactOptions, 'maxRequestTokens' | 'maxRequestChars'>,
 ): ToolCall[][] {
-  const budget = options.maxRequestTokens - stateTokens - REQUEST_OVERHEAD_TOKENS;
+  const tokenBudget = options.maxRequestTokens - state.tokens - REQUEST_OVERHEAD_TOKENS;
+  const charBudget = options.maxRequestChars - state.chars - REQUEST_OVERHEAD_CHARS;
   const batches: ToolCall[][] = [];
   let current: ToolCall[] = [];
   let currentTokens = 0;
+  let currentChars = 0;
   for (const call of calls) {
-    const tokens = estimateTokens(JSON.stringify(questionsFor(call)));
-    if (current.length > 0 && currentTokens + tokens > budget) {
+    const json = JSON.stringify(questionsFor(call));
+    const tokens = estimateTokens(json);
+    const chars = json.length;
+    if (
+      current.length > 0 &&
+      (currentTokens + tokens > tokenBudget || currentChars + chars > charBudget)
+    ) {
       batches.push(current);
       current = [];
       currentTokens = 0;
+      currentChars = 0;
     }
-    if (current.length === 0 && tokens > budget) {
+    if (current.length === 0 && tokens > tokenBudget) {
       throw new Error(
-        `state leaves no room for questions (~${stateTokens} of ${options.maxRequestTokens} tokens)`,
+        `state leaves no room for questions (~${state.tokens} of ${options.maxRequestTokens} tokens)`,
+      );
+    }
+    if (current.length === 0 && chars > charBudget) {
+      throw new Error(
+        `state leaves no room for questions (${state.chars} of ${options.maxRequestChars} chars)`,
       );
     }
     current.push(call);
     currentTokens += tokens;
+    currentChars += chars;
   }
   if (current.length > 0) batches.push(current);
   return batches;
@@ -250,8 +294,8 @@ function count(decisions: readonly CallDecision[], reason: CallDecision['reason'
 /**
  * Compacts a transcript by asking Jev, for every tool call outside the pinned
  * first and newest messages, whether the call and whether its result must
- * stay. The whole history (results omitted, fitted into `maxStateTokens`) is
- * sent as state with every batch of questions. Throws when Jev fails or the
+ * stay. The whole history (results omitted, fitted into `maxStateTokens` and,
+ * when set, `maxRequestChars`) is sent as state with every batch of questions. Throws when Jev fails or the
  * history cannot be fitted; the caller decides whether to fall back.
  */
 export async function compact(
@@ -271,7 +315,7 @@ export async function compact(
   if (candidates.length > 0) {
     const state = fitState(messages, calls, resolved);
     fitted = state;
-    batches = batchCalls(candidates, state.tokens, resolved);
+    batches = batchCalls(candidates, state, resolved);
     const answered = await Promise.all(
       batches.map((batch) => askBatch(asker, state.state, batch)),
     );

@@ -10,6 +10,11 @@
       "description": "TypeSafe API key. Leave unset to use TYPESAFE_API_KEY.",
       "sensitive": true
     },
+    "baseUrl": {
+      "type": "string",
+      "title": "System One endpoint URL",
+      "description": "Full URL of the System One endpoint, including the /v1/systemone path. Leave unset for TypeSafe at https://api.typesafe.ai/v1/systemone. Set it to route to a self-hosted endpoint; the model option still chooses the model."
+    },
     "keepThreshold": {
       "type": "number",
       "title": "Keep threshold",
@@ -45,6 +50,11 @@
       "title": "Maximum Jev request tokens",
       "description": "Estimated token budget for state plus questions in one Jev request.",
       "default": 30000
+    },
+    "maxRequestChars": {
+      "type": "number",
+      "title": "Maximum Jev request characters",
+      "description": "Exact character ceiling for one Jev request, for an endpoint that caps the bytes it reads rather than estimated tokens. Leave unset for TypeSafe, which needs only the token budgets."
     },
     "truncateHeadChars": {
       "type": "number",
