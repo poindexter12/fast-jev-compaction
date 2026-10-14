@@ -44,9 +44,8 @@ found. "This already works, here is where" is a better answer than a change
 - **`fast-systemone-compaction` is not published on npm**, so the README's install line is
   aspirational. Upstream holds the old name `fast-jev-compaction` at 0.4.1, which is why this fork
   renamed rather than kept it.
-- **`package.json` says 0.2.0 while both plugin manifests say 0.3.0.** Deliberate drift, not a bug
-  to tidy; `.claude/rules/fork-topology.md` says to state which artifact is being released before
-  touching any of the four files that carry a version.
+- **One version, 0.4.0, covers the package and the plugin**, and `tests/version.test.ts` enforces
+  it. The 0.2.0-against-0.3.0 split this file used to warn about came from upstream and is gone.
 - **The local directory is still named `fast-jev-compaction`** even though the repo and package are
   not. Harmless, but it is why `graphify-out/GRAPH_REPORT.md` has the old name in its title line.
 - **`npm run validate:plugin` cannot run in CI** (no `claude` CLI on a runner), so it is a local

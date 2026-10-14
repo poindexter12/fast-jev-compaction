@@ -1,5 +1,5 @@
 ---
-description: This is a divergent fork, and three files carry the version
+description: This is a divergent fork, and one version covers both its artifacts
 priority: 50
 ---
 - `origin` is `poindexter12/fast-systemone-compaction` and `upstream` is
@@ -8,13 +8,17 @@ priority: 50
 - Branch from `origin/main` and run `git fetch origin` first. Never branch from a stale local
   `main`. Fetch `upstream` only when deliberately pulling its changes in, and say what you are
   taking.
-- Four files carry a version and they drift: `package.json` (the npm package),
-  `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (both the plugin), and
-  `package-lock.json`, which mirrors `package.json` twice. The manifests currently say 0.3.0
-  while `package.json` says 0.2.0. When bumping any of them, state which of the two artifacts is
-  being released and whether the others should follow. Bring the lockfile along with
-  `npm install --package-lock-only` rather than editing it, and check the diff touches only the
-  name and version.
+- One version covers both artifacts, the npm package and the plugin, and it is 0.4.0. It lives at
+  five sites across four files: `package.json`, `.claude-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json` under `plugins[0]`, and `package-lock.json`, which mirrors it
+  twice. `tests/version.test.ts` fails if they disagree, so bump all of them together. The split
+  that used to be here, 0.2.0 against 0.3.0, came from upstream at `75ddfe5` and was retired
+  rather than inherited: the plugin is a thin adapter over `src/`, so no library change leaves
+  plugin behavior alone and separate numbers bought nothing.
+- Bring the lockfile along with `npm install --package-lock-only` rather than editing it. Expect
+  it to carry more than the version, because it also mirrors `engines` and the dependency set and
+  may be stale in those: unifying at 0.4.0 also pulled `engines` from `>=18` to `>=24`, three
+  commits after `package.json` changed. Read the diff rather than assuming its shape.
 - The fork no longer shares upstream's name. It publishes as `fast-systemone-compaction`, named
   for the wire protocol rather than the `jev-latest` model, and the marketplace owner and both
   README install specs say `poindexter12`. Upstream holds `fast-jev-compaction` on npm at 0.4.1,
