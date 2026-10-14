@@ -60,11 +60,12 @@ so a test that wants `TYPESAFE_API_KEY` is a defect in the test rather than a mi
 | Host policy defaults | `HOOK_DEFAULTS` in `hooks/fast-systemone.ts` |
 | Local toolchain | `.mise.toml` |
 
-Four files carry a version and they drift: `package.json`, `.claude-plugin/plugin.json`,
-`.claude-plugin/marketplace.json`, and `package-lock.json`, which mirrors `package.json` twice. At
-the time of writing the manifests say 0.3.0 and `package.json` says 0.2.0, which is an open
-decision, not an accident. `.claude/rules/fork-topology.md` owns the policy; bring the lockfile along
-with `npm install --package-lock-only` rather than editing it.
+One version covers both artifacts, currently 0.4.0, written at five sites across four files:
+`package.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` under
+`plugins[0]`, and `package-lock.json`, which mirrors it twice. `tests/version.test.ts` fails if
+they disagree. `.claude/rules/fork-topology.md` owns the policy; bring the lockfile along with
+`npm install --package-lock-only` rather than editing it, and read its diff, because it also
+mirrors `engines` and can be stale there independently.
 
 The `userConfig` keys in `plugin.json` are read by name in `resolveHookConfig`, so renaming one
 breaks the install prompt silently. That is why `validate:plugin` is a gate.
