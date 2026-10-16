@@ -39,6 +39,12 @@
       "description": "Minimum estimated character reduction required to replace history.",
       "default": 0.25
     },
+    "archiveResults": {
+      "type": "boolean",
+      "title": "Save dropped tool output",
+      "description": "Write tool output dropped by compaction to .claude/fast-systemone-compaction/ and cite the file in the marker left behind, so it can be read back.",
+      "default": true
+    },
     "maxStateTokens": {
       "type": "number",
       "title": "Maximum System One state tokens",
