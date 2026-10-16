@@ -2,6 +2,7 @@ import type {
   On,
   PluginOptions,
   Register,
+  SessionCompactTrigger,
   SessionMessage,
   ToolResultSummary,
   ToolUseSummary,
@@ -252,6 +253,24 @@ function percent(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
 }
 
+/**
+ * The one-line outcome of a compaction that stood. A `precompute` dispatch
+ * installs nothing: the engine keeps the result only for the compaction that
+ * comes, and only if the conversation it ran over still leads. Reporting it as
+ * a compaction that landed would claim a reduction the session has not had.
+ */
+export function outcomeNotice(
+  trigger: SessionCompactTrigger,
+  kept: number,
+  total: number,
+  result: CompactResult,
+): string {
+  const counts = `${kept}/${total} messages, no summary`;
+  return trigger === 'precompute'
+    ? `precomputed ${counts}; installed only if this conversation still leads (${summarize(result)})`
+    : `kept ${counts} (${summarize(result)})`;
+}
+
 export function summarize(result: CompactResult): string {
   const { stats } = result;
   const parts = [
@@ -356,10 +375,7 @@ export const register: Register = (on: On, options: PluginOptions) => {
         );
         return next(event);
       }
-      notify(
-        $,
-        `kept ${messages.length}/${event.messages.length} messages, no summary (${summarize(result)})`,
-      );
+      notify($, outcomeNotice(event.trigger, messages.length, event.messages.length, result));
       return { messages };
     } catch (error) {
       notify(

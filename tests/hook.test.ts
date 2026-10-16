@@ -4,6 +4,7 @@ import {
   compactSession,
   decisionLog,
   decisionLogLines,
+  outcomeNotice,
   resolveHookConfig,
   summarize,
   toSessionMessages,
@@ -188,6 +189,19 @@ describe('compactSession', () => {
     await expect(
       compactSession(transcript(), { ...config, apiKey: 'k' }, async () => ({ status: 500, ok: false, text: 'x' })),
     ).rejects.toThrow(/500/);
+  });
+});
+
+describe('outcomeNotice', () => {
+  it('says precomputed, not kept, when the engine installs nothing yet', async () => {
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
+    const { result: output } = await compactSession(transcript(), config, systemOneFetch(() => 0.1));
+    expect(outcomeNotice('auto', 3, 7, output)).toBe(
+      `kept 3/7 messages, no summary (${summarize(output)})`,
+    );
+    expect(outcomeNotice('precompute', 3, 7, output)).toBe(
+      `precomputed 3/7 messages, no summary; installed only if this conversation still leads (${summarize(output)})`,
+    );
   });
 });
 
