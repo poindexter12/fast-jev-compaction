@@ -14,11 +14,14 @@ import {
   questionsFor,
   reductionRatio,
   resolveOptions,
+  truncate,
   type HistoryToolCall,
   type SystemOneAsker,
   type SystemOneQuestions,
   type Message,
   type ToolCall,
+  wellFormedEnd,
+  wellFormedStart,
 } from '../src/index.js';
 
 function message(role: Message['role'], text: string, extra: Partial<Message> = {}): Message {
@@ -494,5 +497,61 @@ describe('HTTP client', () => {
     await expect(
       compactMessages(transcript(), { apiKey: '', preserveRecentMessages: 1 }),
     ).rejects.toThrow(/TYPESAFE_API_KEY/);
+  });
+});
+
+describe('surrogate boundaries', () => {
+  const EMOJI = '\u{1F600}';
+  // Local rather than String.prototype.isWellFormed, so the assertion does not
+  // depend on the ES2024 lib setting.
+  const wellFormed = (text: string): boolean =>
+    !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(text);
+
+  it('moves a boundary off a split pair and leaves a clean one alone', () => {
+    const text = `${'a'.repeat(299)}${EMOJI.repeat(100)}`;
+    expect(wellFormed(text.slice(0, 300))).toBe(false);
+    expect(wellFormedEnd(text, 300)).toBe(299);
+    expect(wellFormedEnd(text, 301)).toBe(301);
+    expect(wellFormedStart(text, 300)).toBe(301);
+    expect(wellFormedStart(text, 301)).toBe(301);
+    expect(wellFormedEnd(text, 0)).toBe(0);
+    expect(wellFormedEnd(text, text.length)).toBe(text.length);
+    expect(wellFormedStart(text, 0)).toBe(0);
+  });
+
+  it('keeps truncate output well formed', () => {
+    const text = EMOJI.repeat(50);
+    expect(wellFormed(text.slice(0, 11))).toBe(false);
+    expect(wellFormed(truncate(text, 11))).toBe(true);
+    expect(wellFormed(truncate(text, 12))).toBe(true);
+  });
+
+  it('keeps a truncated tool result well formed', () => {
+    const messages = transcript();
+    messages[5]!.toolResults![0]!.text = EMOJI.repeat(400);
+    const calls = collectToolCalls(messages, 0);
+    const options = { keepThreshold: 0.5 };
+    const decisions = [
+      decideCall(calls[0]!, { keepCall: 0.9, keepResult: 0.9 }, options),
+      decideCall(calls[1]!, { keepCall: 0.9, keepResult: 0.1 }, options),
+      decideCall(calls[2]!, { keepCall: 0.9, keepResult: 0.9 }, options),
+    ];
+    const kept = applyDecisions(messages, decisions, calls, 301);
+    for (const message of kept) {
+      for (const result of message.toolResults ?? []) {
+        expect(wellFormed(result.text)).toBe(true);
+      }
+    }
+  });
+
+  it('keeps a failed-request error body well formed', () => {
+    const body = `a${EMOJI.repeat(200)}`;
+    expect(wellFormed(body.slice(0, 200))).toBe(false);
+    try {
+      parseSystemOneResponse(500, false, body);
+      expect.unreachable();
+    } catch (error) {
+      expect(wellFormed((error as Error).message)).toBe(true);
+    }
   });
 });

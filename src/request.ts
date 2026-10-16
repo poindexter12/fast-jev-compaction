@@ -1,3 +1,4 @@
+import { wellFormedEnd } from './text.js';
 import type { SystemOneAnswer, SystemOneQuestions, SystemOneResponse, SystemOneState } from './types.js';
 
 export const SYSTEM_ONE_URL = 'https://api.typesafe.ai/v1/systemone';
@@ -42,7 +43,7 @@ export function parseSystemOneResponse(
   text: string,
 ): SystemOneResponse {
   if (!ok) {
-    throw new Error(`System One request failed (${status}): ${text.slice(0, 200)}`);
+    throw new Error(`System One request failed (${status}): ${text.slice(0, wellFormedEnd(text, 200))}`);
   }
   let parsed: unknown;
   try {
