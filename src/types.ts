@@ -1,3 +1,9 @@
+/**
+ * Offered each tool result compaction is about to delete. Returns the path the
+ * result was saved to, for its marker to cite, or `undefined` to save nothing.
+ */
+export type ArchiveResult = (toolUseId: string, text: string) => string | undefined;
+
 export type Role = 'user' | 'assistant';
 
 /**
@@ -95,6 +101,12 @@ export interface FittedState {
 }
 
 export interface CompactOptions {
+  /**
+   * Called for every dropped tool result and dropped call, to save the output
+   * elsewhere; the path it returns is cited in the marker left behind. Unset
+   * deletes the output outright.
+   */
+  archive?: ArchiveResult;
   /** Ongoing task description; defaults to the last few user prompts. */
   goal?: string;
   /** Minimum keep probability for a call or result to stay. Default 0.5. */
