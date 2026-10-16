@@ -14,6 +14,16 @@ item is kept when System One's probability reaches `keepThreshold`; a dropped re
 is truncated to its first `truncateHeadChars` characters plus a one-line note,
 and a dropped call disappears with its result.
 
+Dropped output is not lost by default. Each one is written to
+`.claude/fast-systemone-compaction/result-<tool_use_id>.txt`, beside a
+`.gitignore` of `*` so it never reaches a commit, and the marker left behind
+cites the file so the agent can `Read` or `grep` it instead of re-running the
+tool. Output that looks like credentials (a PEM private-key header, a
+key-shaped assignment, a URL with inline credentials) is never written, and
+nothing is written at all unless the compaction is the one that gets used, so
+a run that falls back to the built-in summary leaves no files. Set
+`archiveResults` to `false` to drop output outright as before.
+
 The state is fitted into `maxStateTokens` in stages: tool inputs are
 truncated, then long texts are abridged (oldest first, pinned messages last),
 then old messages collapse to a `[… N chars omitted …]` note, then old tool
@@ -60,6 +70,7 @@ The plugin declares these `userConfig` values in
 | `maxRequestTokens` | `30000` |
 | `maxRequestChars` | unset (no limit) |
 | `truncateHeadChars` | `300` |
+| `archiveResults` | `true` |
 | `model` | `jev-latest` |
 | `baseUrl` | `https://api.typesafe.ai/v1/systemone` |
 
