@@ -74,7 +74,22 @@ and always decided `keep` / reason `pinned`.
 | `call.pinned` | `keep` | untouched |
 | `keepResult >= keepThreshold` | `keep` | untouched |
 | `keepCall >= keepThreshold` | `drop_result` | the call stays; the result keeps `truncateHeadChars` (default 300) plus a marker naming the dropped char count |
-| otherwise | `drop_call` | the call and its result both disappear |
+| otherwise | `drop_call` | the call and its result both disappear, leaving a one-line note only when the output was archived |
+
+### Archiving what is dropped
+
+Both destructive actions offer the output to `compact()`'s optional `archive` callback first. It
+returns the path the output was saved to, which the marker left behind cites, so the agent can read
+the file rather than re-run the tool; returning `undefined`, or passing no callback, deletes the
+output outright and leaves no note. The library only threads the path into the marker text, so `src/`
+keeps no filesystem dependency.
+
+The hook is the only supplier of that callback. `archiveWriter` in `hooks/fast-systemone.ts` names a
+file per output under `.claude/fast-systemone-compaction/`, collects the paths during compaction, and
+writes them on `flush` after `compact()` returns, so a run that throws or falls back to the built-in
+summary leaves nothing on disk. `looksSecret` withholds output carrying credentials, which also
+suppresses its note. The `archiveResults` plugin option (default `true`) decides whether the hook
+passes a callback at all.
 
 `applyDecisions` rebuilds only the messages it touches and returns every untouched message as the
 same object it came in as. That identity is load-bearing: the hook's `toSessionMessages` uses it to

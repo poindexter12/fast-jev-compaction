@@ -1,6 +1,6 @@
 # fast-systemone-compaction : codebase map
 
-*Last Updated: 2026-10-13*
+*Last Updated: 2026-10-15*
 
 One repository, two artifacts. The `fast-systemone-compaction` npm package in `src/` decides what a
 coding-agent transcript can lose, by asking TypeSafe's System One API, for every tool call, whether
