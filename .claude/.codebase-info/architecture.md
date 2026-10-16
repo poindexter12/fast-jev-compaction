@@ -1,6 +1,6 @@
 # Architecture
 
-*Last Updated: 2026-10-13*
+*Last Updated: 2026-10-15*
 
 ## Two artifacts, one tree
 
@@ -13,10 +13,11 @@ hooks/hooks.json             { "modules": ["./fast-systemone.ts"] }
 hooks/fast-systemone.ts      adapter: userConfig -> options, SessionMessage <-> Message, fallback
         |
         v  imports ../src/*.js
-src/index.ts                 barrel re-exporting all six modules
+src/index.ts                 barrel re-exporting all seven modules
 src/types.ts                 every shape; no behaviour
 src/request.ts               URL/body construction, response validation, noulAnswer
 src/client.ts                SystemOneClient: a SystemOneAsker over global fetch
+src/text.ts                  surrogate-safe slice boundaries (wellFormedEnd/Start), a leaf
 src/state.ts                 token estimate, call pairing, the state-fitting ladder
 src/compact.ts               option resolution, question building, batching, decisions, rebuild
 src/messages.ts              compactMessages: compact + a client, for library callers
@@ -49,7 +50,7 @@ asker.ask(state, questions)  ->  { answers: { call_t7: {noul}, result_t7: {noul}
         |
         v
 decideCall(call, answer, options)                       src/compact.ts
-applyDecisions(messages, decisions, calls, headChars)   src/compact.ts
+applyDecisions(messages, decisions, calls, headChars, archive?)  src/compact.ts
         |
         v   CompactResult { messages, decisions, stats }
 ```
@@ -160,8 +161,8 @@ above the true length. It is left alone because it errs toward the safe side, an
 `hooks/fast-systemone.ts` registers two handlers:
 
 - **`session.compact`** resolves the API key (plugin `apiKey`, then `TYPESAFE_API_KEY` from the
-  environment, then `env.TYPESAFE_API_KEY` in settings), runs `compactSession`, logs the per-call
-  decisions, and returns the rewritten messages. If the reduction comes in under
+  environment, then `env.TYPESAFE_API_KEY` in settings), passes `archiveWriter($)` unless
+  `archiveResults` is off, runs `compactSession`, logs the per-call decisions, and returns the rewritten messages. If the reduction comes in under
   `minReductionRatio` (default 0.25), or anything throws, it calls `next(event)` and lets Claude
   Code's own summarising compaction run instead. Every fallback is announced through `$.ui.log`
   plus a toast, so a silent degradation is not possible.
