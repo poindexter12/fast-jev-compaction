@@ -1,3 +1,4 @@
+import { wellFormedEnd, wellFormedStart } from './text.js';
 import type {
   CompactionState,
   FittedState,
@@ -38,13 +39,16 @@ export function estimateTokens(text: string): number {
 }
 
 export function truncate(text: string, limit: number): string {
-  return text.length <= limit ? text : `${text.slice(0, Math.max(0, limit - 1))}…`;
+  if (text.length <= limit) return text;
+  return `${text.slice(0, wellFormedEnd(text, Math.max(0, limit - 1)))}…`;
 }
 
 function abridge(text: string, head: number, tail: number): string {
   if (text.length <= head + tail + 40) return text;
-  const omitted = text.length - head - tail;
-  return `${text.slice(0, head)}\n[… ${omitted} chars omitted …]\n${text.slice(-tail)}`;
+  const headEnd = wellFormedEnd(text, head);
+  const tailStart = wellFormedStart(text, text.length - tail);
+  const omitted = tailStart - headEnd;
+  return `${text.slice(0, headEnd)}\n[… ${omitted} chars omitted …]\n${text.slice(tailStart)}`;
 }
 
 export function isPinned(
