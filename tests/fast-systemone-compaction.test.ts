@@ -555,3 +555,83 @@ describe('surrogate boundaries', () => {
     }
   });
 });
+
+describe('archiving dropped output', () => {
+  const transcript = () => [
+    { role: 'user' as const, text: 'read the log', toolUses: [] },
+    {
+      role: 'assistant' as const,
+      text: 'Looking.',
+      toolUses: [
+        {
+          tool_use_id: 't1',
+          tool: 'Bash',
+          input: { command: "sed -n '1,300p' server.log" },
+          text: 'x'.repeat(9000),
+        },
+      ],
+    },
+    {
+      role: 'user' as const,
+      text: '',
+      toolUses: [],
+      toolResults: [{ tool_use_id: 't1', text: 'x'.repeat(9000) }],
+    },
+  ];
+
+  const dropAll = (messages: ReturnType<typeof transcript>) => {
+    const calls = collectToolCalls(messages, 0);
+    const decisions = calls.map((call) =>
+      decideCall(call, { keepCall: 0.1, keepResult: 0.1 }, { keepThreshold: 0.5 }),
+    );
+    return { calls, decisions };
+  };
+
+  it('replaces a dropped call with one line citing the archived output', () => {
+    const messages = transcript();
+    const { calls, decisions } = dropAll(messages);
+    expect(decisions[0]!.action).toBe('drop_call');
+    const archived: string[] = [];
+    const kept = applyDecisions(messages, decisions, calls, 300, (id, text) => {
+      archived.push(`${id}:${text.length}`);
+      return `.claude/fast-systemone-compaction/result-${id}.txt`;
+    });
+    const assistant = kept.find((message) => message.role === 'assistant')!;
+    expect(assistant.toolUses).toHaveLength(0);
+    expect(assistant.text).toContain('removed the Bash call');
+    expect(assistant.text).toContain("sed -n '1,300p' server.log");
+    expect(assistant.text).toContain('result-t1.txt');
+    expect(archived).toEqual(['t1:9000']);
+  });
+
+  it('leaves no note when nothing was archived', () => {
+    const messages = transcript();
+    const { calls, decisions } = dropAll(messages);
+    const withoutArchive = applyDecisions(messages, decisions, calls, 300);
+    const declined = applyDecisions(messages, decisions, calls, 300, () => undefined);
+    for (const kept of [withoutArchive, declined]) {
+      expect(kept.find((message) => message.role === 'assistant')?.text).toBe('Looking.');
+      expect(kept.map((message) => message.text)).toEqual(['read the log', 'Looking.']);
+    }
+  });
+
+  it('cites the file in a truncated result instead of telling the agent to re-run', () => {
+    const messages = transcript();
+    const calls = collectToolCalls(messages, 0);
+    const decisions = calls.map((call) =>
+      decideCall(call, { keepCall: 0.9, keepResult: 0.1 }, { keepThreshold: 0.5 }),
+    );
+    expect(decisions[0]!.action).toBe('drop_result');
+    const kept = applyDecisions(
+      messages,
+      decisions,
+      calls,
+      300,
+      (id) => `.claude/fast-systemone-compaction/result-${id}.txt`,
+    );
+    const marker = kept.find((message) => message.toolResults)!.toolResults![0]!.text;
+    expect(marker).toContain('truncated 8700 chars');
+    expect(marker).toContain('full output: .claude/fast-systemone-compaction/result-t1.txt');
+    expect(marker).not.toContain('re-run the tool');
+  });
+});

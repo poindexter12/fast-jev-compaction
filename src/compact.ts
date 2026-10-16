@@ -2,6 +2,7 @@ import { noulAnswer } from './request.js';
 import { collectToolCalls, estimateTokens, fitState } from './state.js';
 import { wellFormedEnd } from './text.js';
 import type {
+  ArchiveResult,
   CallAnswer,
   CallDecision,
   CompactOptions,
@@ -177,26 +178,52 @@ async function askBatch(
   );
 }
 
-function truncatedResultText(text: string, isError: boolean, headChars: number): string {
+function truncatedResultText(
+  text: string,
+  isError: boolean,
+  headChars: number,
+  archivedPath?: string,
+): string {
   if (text.length <= headChars + 120) return text;
   const end = wellFormedEnd(text, headChars);
   const head = end > 0 ? `${text.slice(0, end)}\n` : '';
+  const where = archivedPath
+    ? `; full output: ${archivedPath} (Read or grep it if needed)`
+    : '; re-run the tool if needed';
   return `${head}[fast-systemone-compaction truncated ${text.length - end} chars of this tool result${
     isError ? ' (error)' : ''
-  }; re-run the tool if needed]`;
+  }${where}]`;
+}
+
+/**
+ * One line standing in for a dropped call, naming the tool, its input and the
+ * file holding the output. Only used when the output was archived, so the note
+ * always carries somewhere to read it back from.
+ */
+function droppedCallNote(tool: ToolUse, archivedPath: string): string {
+  let input = '';
+  try {
+    input = JSON.stringify(tool.input);
+  } catch {
+    input = '{}';
+  }
+  if (input.length > 160) input = `${wellFormedEnd(input, 159) > 0 ? input.slice(0, wellFormedEnd(input, 159)) : ''}\u2026`;
+  return `[fast-systemone-compaction removed the ${tool.tool} call ${input}; full output: ${archivedPath} (Read or grep it if needed)]`;
 }
 
 /**
  * Rebuilds the conversation from the decisions. A dropped call disappears
  * together with its result; a dropped result keeps a bounded head and note.
  * Messages that lose all their content are removed; untouched messages are
- * returned as the same objects they came in as.
+ * returned as the same objects they came in as. When `archive` saves a dropped
+ * output, the marker left behind cites the file it went to.
  */
 export function applyDecisions(
   messages: readonly Message[],
   decisions: readonly CallDecision[],
   calls: readonly ToolCall[],
   headChars: number,
+  archive?: ArchiveResult,
 ): Message[] {
   const byId = new Map(calls.map((call) => [call.id, call]));
   const actions = new Map<string, CallDecision['action']>();
@@ -213,6 +240,15 @@ export function applyDecisions(
       kept.push(message);
       continue;
     }
+    // A dropped call whose output was archived leaves one line naming it and
+    // the file, so a detail inside it can still be recovered.
+    const notes = message.toolUses
+      .filter((tool) => actions.get(tool.tool_use_id) === 'drop_call')
+      .map((tool) => {
+        const path = archive?.(tool.tool_use_id, tool.text ?? '');
+        return path ? droppedCallNote(tool, path) : '';
+      })
+      .filter(Boolean);
     const toolUses = message.toolUses
       .filter((tool) => actions.get(tool.tool_use_id) !== 'drop_call')
       .map((tool) => {
@@ -221,6 +257,7 @@ export function applyDecisions(
           tool.text ?? '',
           tool.isError ?? false,
           headChars,
+          archive?.(tool.tool_use_id, tool.text ?? ''),
         );
         if ((tool.text ?? '') === text) return tool;
         const copy: ToolUse = {
@@ -236,7 +273,12 @@ export function applyDecisions(
       .filter((result) => actions.get(result.tool_use_id) !== 'drop_call')
       .map((result) => {
         if (actions.get(result.tool_use_id) !== 'drop_result') return result;
-        const text = truncatedResultText(result.text, result.isError ?? false, headChars);
+        const text = truncatedResultText(
+          result.text,
+          result.isError ?? false,
+          headChars,
+          archive?.(result.tool_use_id, result.text),
+        );
         return text === result.text
           ? result
           : {
@@ -260,10 +302,11 @@ export function applyDecisions(
       kept.push(message);
       continue;
     }
-    if (message.text.trim().length === 0 && toolUses.length === 0 && toolResults.length === 0) {
+    const text = notes.length > 0 ? [message.text, ...notes].filter(Boolean).join('\n') : message.text;
+    if (text.trim().length === 0 && toolUses.length === 0 && toolResults.length === 0) {
       continue;
     }
-    const rebuilt: Message = { role: message.role, text: message.text, toolUses };
+    const rebuilt: Message = { role: message.role, text, toolUses };
     if (toolResults.length > 0) rebuilt.toolResults = toolResults;
     kept.push(rebuilt);
   }
@@ -332,6 +375,7 @@ export async function compact(
     decisions,
     calls,
     resolved.truncateHeadChars,
+    options.archive,
   );
   return {
     messages: kept,

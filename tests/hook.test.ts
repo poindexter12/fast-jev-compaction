@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  archiveWriter,
   compactSession,
   decisionLog,
   decisionLogLines,
@@ -64,7 +65,7 @@ function systemOneFetch(
 
 describe('hook config', () => {
   it('reads userConfig values and falls back to defaults', () => {
-    expect(resolveHookConfig({})).toEqual({ compactAtPercent: 60, minReductionRatio: 0.25, model: 'jev-latest' });
+    expect(resolveHookConfig({})).toEqual({ archiveResults: true, compactAtPercent: 60, minReductionRatio: 0.25, model: 'jev-latest' });
     expect(
       resolveHookConfig({ apiKey: 'k', baseUrl: 'http://local/v1/systemone', keepThreshold: 0.3, maxStateTokens: 1000, maxRequestChars: 22_937, model: 'jev-x', goal: 'g', compactAtPercent: 'no' }),
     ).toEqual({
@@ -75,9 +76,12 @@ describe('hook config', () => {
       maxRequestChars: 22_937,
       model: 'jev-x',
       goal: 'g',
+      archiveResults: true,
       compactAtPercent: 60,
       minReductionRatio: 0.25,
     });
+    expect(resolveHookConfig({ archiveResults: false }).archiveResults).toBe(false);
+    expect(resolveHookConfig({ archiveResults: 'yes' }).archiveResults).toBe(true);
   });
 
   it('leaves maxRequestChars out when it is unset, so the budget stays off', () => {
@@ -184,5 +188,46 @@ describe('compactSession', () => {
     await expect(
       compactSession(transcript(), { ...config, apiKey: 'k' }, async () => ({ status: 500, ok: false, text: 'x' })),
     ).rejects.toThrow(/500/);
+  });
+});
+
+describe('archiveWriter', () => {
+  const fsStub = () => {
+    const files = new Map<string, string>();
+    return {
+      files,
+      fs: {
+        exists: async (path: string) => files.has(path),
+        write: async (path: string, text: string) => void files.set(path, text),
+      },
+    };
+  };
+
+  it('names a file per dropped output and writes them on flush, with a .gitignore', async () => {
+    const stub = fsStub();
+    const writer = archiveWriter(stub);
+    const path = writer.cite('toolu_1', 'a'.repeat(5000));
+    expect(path).toBe('.claude/fast-systemone-compaction/result-toolu_1.txt');
+    expect(stub.files.size).toBe(0);
+    await writer.flush();
+    expect(stub.files.get('.claude/fast-systemone-compaction/.gitignore')).toBe('*\n');
+    expect(stub.files.get(path!)?.length).toBe(5000);
+  });
+
+  it('never writes output that looks like credentials', async () => {
+    const stub = fsStub();
+    const writer = archiveWriter(stub);
+    expect(writer.cite('toolu_2', 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG')).toBeUndefined();
+    expect(writer.cite('toolu_3', '-----BEGIN OPENSSH PRIVATE KEY-----\nb3Blb')).toBeUndefined();
+    expect(writer.cite('toolu_4', 'cloning https://user:hunter2@example.com/repo')).toBeUndefined();
+    await writer.flush();
+    expect(stub.files.size).toBe(0);
+  });
+
+  it('writes nothing when no output was cited', async () => {
+    const stub = fsStub();
+    await archiveWriter(stub).flush();
+    expect(stub.files.size).toBe(0);
+    expect(archiveWriter(stub).cite('toolu_5', '')).toBeUndefined();
   });
 });

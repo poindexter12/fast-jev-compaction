@@ -11,6 +11,7 @@ import type {
 import { compact, reductionRatio, resolveOptions } from '../src/compact.js';
 import { buildSystemOneRequest, DEFAULT_MODEL, parseSystemOneResponse } from '../src/request.js';
 import type {
+  ArchiveResult,
   CompactOptions,
   CompactResult,
   SystemOneAsker,
@@ -20,6 +21,7 @@ import type {
 } from '../src/types.js';
 
 const HOOK_DEFAULTS = {
+  archiveResults: true,
   compactAtPercent: 60,
   minReductionRatio: 0.25,
   model: DEFAULT_MODEL,
@@ -42,6 +44,7 @@ export type HookFetch = (url: string, init?: HookFetchInit) => Promise<HookFetch
 
 export type HookConfig = CompactOptions & {
   apiKey?: string;
+  archiveResults: boolean;
   baseUrl?: string;
   compactAtPercent: number;
   minReductionRatio: number;
@@ -74,6 +77,10 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
   }
   const config: HookConfig = {
     ...numbers,
+    archiveResults:
+      typeof options['archiveResults'] === 'boolean'
+        ? options['archiveResults']
+        : HOOK_DEFAULTS.archiveResults,
     compactAtPercent: optionNumber(options, 'compactAtPercent', HOOK_DEFAULTS.compactAtPercent),
     minReductionRatio: optionNumber(
       options,
@@ -178,14 +185,67 @@ export async function compactSession(
   messages: readonly SessionMessage[],
   config: HookConfig,
   fetchFn: HookFetch,
+  archive?: ArchiveWriter,
 ): Promise<SessionCompaction> {
   if (!config.apiKey) throw new Error('TYPESAFE_API_KEY is not configured');
   const result = await compact(
     messages,
     systemOneAsker(fetchFn, config.apiKey, config.model, config.baseUrl),
-    config,
+    archive ? { ...config, archive: archive.cite } : config,
   );
+  if (archive) await archive.flush();
   return { result, messages: toSessionMessages(messages, result.messages) };
+}
+
+const ARCHIVE_DIR = '.claude/fast-systemone-compaction';
+
+/**
+ * Matches output carrying credentials. Only the output is examined, because
+ * archiving is offered a tool result and never the command that produced it.
+ */
+const SECRET_OUTPUT =
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(aws_secret_access_key|api[_-]?key|access[_-]?token|client[_-]?secret|password)\s*[=:]\s*\S|:\/\/[^\s:@/]+:[^\s:@/]+@/i;
+
+/** True when the output looks like it carries credentials. */
+export function looksSecret(output: string): boolean {
+  return SECRET_OUTPUT.test(output.slice(0, 20_000));
+}
+
+export type ArchiveWriter = {
+  /** Names the file a dropped output will be written to, for its marker. */
+  cite: ArchiveResult;
+  /** Writes the files named so far. */
+  flush: () => Promise<void>;
+};
+
+/**
+ * Saves the tool output compaction drops, so a detail buried in one can be read
+ * back later instead of being lost. Paths are collected first and written on
+ * flush, so a compaction the caller discards leaves nothing behind.
+ * Credentials are never written.
+ */
+export function archiveWriter($: {
+  fs: {
+    exists: (path: string) => Promise<boolean>;
+    write: (path: string, text: string) => Promise<void>;
+  };
+}): ArchiveWriter {
+  const pending = new Map<string, string>();
+  return {
+    cite(toolUseId, text) {
+      if (!text || looksSecret(text)) return undefined;
+      const path = `${ARCHIVE_DIR}/result-${toolUseId}.txt`;
+      pending.set(path, text);
+      return path;
+    },
+    async flush() {
+      if (pending.size === 0) return;
+      const ignorePath = `${ARCHIVE_DIR}/.gitignore`;
+      if (!(await $.fs.exists(ignorePath))) await $.fs.write(ignorePath, '*\n');
+      for (const [path, text] of pending) await $.fs.write(path, text);
+      pending.clear();
+    },
+  };
 }
 
 function percent(ratio: number): string {
@@ -279,10 +339,15 @@ export const register: Register = (on: On, options: PluginOptions) => {
   on('session.compact', async ($, event, next) => {
     try {
       const config = { ...configured, apiKey: await getApiKey($, configured) };
-      const { result, messages } = await compactSession(event.messages, config, async (url, init) => {
-        const response = await $.http.fetch(url, init);
-        return { status: response.status, ok: response.ok, text: response.text };
-      });
+      const { result, messages } = await compactSession(
+        event.messages,
+        config,
+        async (url, init) => {
+          const response = await $.http.fetch(url, init);
+          return { status: response.status, ok: response.ok, text: response.text };
+        },
+        config.archiveResults ? archiveWriter($) : undefined,
+      );
       for (const line of decisionLogLines(result)) $.ui.log(line);
       if (reductionRatio(result) < config.minReductionRatio) {
         notify(

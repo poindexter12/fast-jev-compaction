@@ -49,6 +49,12 @@ built-in compaction summary with the original messages.
    - else `keepCall ≥ threshold` → keep the call, truncate the result to its
      first `truncateHeadChars` characters plus a one-line note;
    - else → remove the call together with its result.
+
+   An `archive` callback is offered every dropped output before it goes. The
+   path it returns is cited in the marker left behind, so the output can be
+   read back rather than re-run; a dropped call then leaves one line naming
+   the tool, its input and that file. Return `undefined`, or pass no callback,
+   and the output is deleted with nothing left pointing at it.
 7. The message list is rebuilt: a message that loses all its content is
    removed, untouched messages are returned as the same objects, and no result
    is ever left without its call.
@@ -110,6 +116,7 @@ put it in a source file.
 | `maxStateTokens` | `25000` | Estimated token ceiling for the state |
 | `maxRequestTokens` | `30000` | Estimated ceiling for state plus one batch of questions |
 | `truncateHeadChars` | `300` | Characters of a dropped tool result retained before its note |
+| `archive` | unset | Callback offered every dropped output; the path it returns is cited in the marker |
 
 `result.stats` reports message and character counts before and after, the
 per-reason decision counts, the state size in estimated tokens, which fitting
